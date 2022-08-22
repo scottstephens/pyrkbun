@@ -1,0 +1,6 @@
+{
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.linting.pylintArgs": ["--max-line-length=99"],
+    "editor.rulers": [72, 79, 99]
+}
