@@ -11,7 +11,6 @@ BASE_URL_V4: Optional Porkbun API base URL supporting IPv4 only.
     If used, the API ping request will always return you IPv4 address
 BASE_URL: Effective Base URL to be used for all API requests
 """
-from enum import Enum
 from os import getenv
 from dotenv import load_dotenv
 
@@ -27,20 +26,16 @@ BASE_URL_V64: str = 'https://porkbun.com/api/json/v3'
 BASE_URL_V4: str = 'https://api-ipv4.porkbun.com/api/json/v3'
 BASE_URL: str = BASE_URL_V4 if FORCE_V4 else BASE_URL_V64
 
-class DnsRecordType(Enum):
-    """Defines record types supported by Porkun DNS service
-    """
-    A = 'A'
-    AAAA = 'AAAA'
-    MX = 'MX'
-    CNAME = 'CNAME'
-    ALIAS = 'ALIAS'
-    TXT = 'TXT'
-    NS = 'NS'
-    SRV = 'SRV'
-    TLSA = 'TLSA'
-    CAA = 'CAA'
-    NONE = ''
+SUPPORTED_DNS_RECORD_TYPES = {'A',
+                              'AAAA',
+                              'MX',
+                              'CNAME',
+                              'ALIAS',
+                              'TXT',
+                              'NS',
+                              'SRV',
+                              'TLSA',
+                              'CAA'}
 
 class ApiError(Exception):
     """Porkbun REST API Error
