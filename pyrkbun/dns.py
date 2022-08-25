@@ -1,6 +1,7 @@
 """Porkbun DNS API
 """
 from dataclasses import dataclass, field
+
 from .const import SUPPORTED_DNS_RECORD_TYPES
 from .util import api_post
 
@@ -11,98 +12,56 @@ class Dns():
     Args:
     domain: Domain that hosts the record
     name: Name of the record, excluding the domain
-    r_type: Type of DNS record to be created
+    record_type: Type of DNS record to be created
     content: Content of the record. For an A record this would be an IP
     ttl: DNS Time-to-Live in seconds. Minimum value of 600 seconds
     prio (optional): Record priority where supported. Defaults to '0'
     notes (optional): Information note to be displayed in web GUI
         defaults to empty string
-    r_id (optional): Porkbun DNS record ID, will be auto populated when
-        api is called for get, create and update operations defaults to
-        an empty string
-    state (dont touch): Indicates wether record has been modified since
-        retrieving from the API. 'SYNC', 'NOT_SYNC', 'DELETED'
+    record_id (optional): Porkbun DNS record ID, will be auto populated
+        when api is called for get, create and update operations
+        defaults to an empty string
+
+    Usage:
+    The class can be instantiated with record details and methods are
+    availabe to perfrom create, update and delete operations on the
+    record represnted by the class details.
+    Alternatively, a range of class methods are available to send API
+    commands without the need to first instantiate the class.
     '''
 
     # Just the right number of instance attributes
     # pylint: disable=too-many-instance-attributes
     domain: str
-    name: str
-    r_type: str
+    record_type: str
     content: str
+    name: str = ''
     ttl: str = '600'
     prio: str = '0'
     notes: str = ''
-    r_id: str = ''
-    state: str = field(default='NOT_SYNC', repr=False)
-
-    _name: str = field(init=False, repr=False)
-    _r_type: str = field(init=False, repr=False)
-    _content: str = field(init=False, repr=False)
-    _ttl: str = field(init=False, repr=False)
-    _prio: str = field(init=False, repr=False)
-    _notes: str = field(init=False, repr=False)
+    record_id: str = ''
 
     __api_path: str = field(default='/dns', init=False, repr=False)
 
-    # Setters and getters are used to track if attributes have been
-    # modified since retiving data from the API
-    @property
-    def name(self) -> str: # pylint: disable=missing-function-docstring
-        return self._name
-
-    @property
-    def r_type(self) -> str: # pylint: disable=missing-function-docstring
-        return self._r_type
-
-    @property
-    def content(self) -> str: # pylint: disable=missing-function-docstring
-        return self._content
-
-    @property
-    def ttl(self) -> str: # pylint: disable=missing-function-docstring
-        return self._ttl
-
-    @property
-    def prio(self) -> str: # pylint: disable=missing-function-docstring
-        return self._prio
-
-    @property
-    def notes(self) -> str: # pylint: disable=missing-function-docstring
-        return self._notes
-
-    @name.setter
-    def name(self, name: str):
-        name = name.removesuffix(f'.{self.domain}')
-        self._name = name
-        self.state = 'NOT_SYNC'
-
-    @r_type.setter
-    def r_type(self, r_type: str):
-        assert r_type in SUPPORTED_DNS_RECORD_TYPES
-
-        self._r_type = r_type
-        self.state = 'NOT_SYNC'
-
-    @content.setter
-    def content(self, content):
-        self._content = content
-        self.state = 'NOT_SYNC'
-
-    @ttl.setter
-    def ttl(self, ttl):
-        self._ttl = ttl
-        self.state = 'NOT_SYNC'
-
-    @prio.setter
-    def prio(self, prio):
-        self._prio = prio
-        self.state = 'NOT_SYNC'
-
-    @notes.setter
-    def notes(self, notes):
-        self._notes = notes
-        self.state = 'NOT_SYNC'
+    def __setattr__(self, name, value):
+        if name == 'name':
+            value: str = '' if value == self.domain \
+                else value.removesuffix(f'.{self.domain}')
+        elif name == 'record_type':
+            assert value in SUPPORTED_DNS_RECORD_TYPES
+        elif name == 'notes':
+            # Porkbun are working on notes return, but now its returning null instead
+            # of an empty string. This check simply ensures type consistency for this field
+            value = '' if value is None else value
+        elif name == 'prio':
+            # For certain record types the API is returning null for priotiy instead of a value.
+            # Ensuring type consistency by setting null values to string value zero -> '0'.
+            value = '0' if value is None else value
+        elif name == 'record_id':
+            # When creating a record the ID value is returned as an int.
+            # Ensuring value is always stored as a string for type safety
+            value = str(value)
+        super().__setattr__(name, value)
 
     @classmethod
     def __cls_creator_formatter(cls, domain, api_response) -> list['Dns']:
@@ -116,23 +75,22 @@ class Dns():
             if 'notes' not in record.keys():
                 record['notes'] = ''
             records.append(cls(domain,
-                               record['name'],
                                record['type'],
                                record['content'],
+                               record['name'],
                                record['ttl'],
                                record['prio'],
                                record['notes'],
-                               record['id'],
-                               'SYNC'))
+                               record['id']))
         return records
 
     @classmethod
-    def get_record(cls,
+    def get_records(cls,
                    domain: str,
-                   r_type: str = None,
+                   record_type: str = None,
                    name: str = None,
-                   r_id: str = None) -> 'Dns':
-        """Get a specific DNS record
+                   record_id: str = None) -> list['Dns']:
+        """Get specific DNS records by ID or type and name
 
         Usage:
         Either provide the record name and type (r_type),
@@ -140,29 +98,48 @@ class Dns():
 
         Example 1, Get by record name and type:
         >>> x = pyrkbun.dns.get_record('example.com', 'A', 'www')
+        >>> print(x)
+        [Dns(domain='example.com', name='www', record_type='A',
+        content='198.51.100.45', ttl='650', prio='0', notes='',
+        record_id='253440859')]
 
-        Example 2, Get by record ID:
-        >>> x = pyrkbun.dns.get_record('example.com', r_id ='253440859')
+        Example 2, Get by record name and type where multiple entries exist:
+        >>> x = pyrkbun.dns.get_record('example.com', 'A', 'www')
+        >>> print(x)
+        [Dns(domain='example.com', name='www', record_type='A',
+        content='198.51.100.45', ttl='650', prio='0', notes='',
+        record_id='253440859'), Dns(domain='example.com', .... ]
+
+        Example 3, Get by record ID:
+        >>> x = pyrkbun.dns.get_record('example.com', record_id ='253440859')
+        >>> print(x)
+        [Dns(domain='example.com', name='www', record_type='A',
+        content='198.51.100.45', ttl='650', prio='0', notes='',
+        record_id='253440859')]
+
+        Example 4, Get all records:
+        >>> x = pyrkbun.dns.get_records('example.com')
+        >>> print(x)
+        [Dns(domain='example.com', name='www', record_type='A',
+        content='198.51.100.45', ttl='650', prio='0', notes='',
+        record_id='253440859'), Dns(domain='example.com', .... ]
+
+        Example 5, Get all MX records:
+        >>> x = pyrkbun.dns.get_records('example.com', 'MX')
+        >>> print(x)
+        [Dns(domain='example.com', name='example.com', record_type='MX',
+        content='mail.example.com', ttl='650', prio='10', notes='',
+        record_id='253440860'), Dns(domain='example.com', .... ]
         """
-        if r_type:
-            assert r_type in SUPPORTED_DNS_RECORD_TYPES
+        if record_type:
+            assert record_type in SUPPORTED_DNS_RECORD_TYPES
 
-        path = f'{cls.__api_path}/retrieve/{domain}/{r_id}' if r_id \
-            else f'{cls.__api_path}/retrieveByNameType/{domain}/{r_type}/{name}'
-
-        response = api_post(path)
-        records = cls.__cls_creator_formatter(domain, response)
-        return records[0]
-
-
-    @classmethod
-    def get_all_records(cls, domain: str) -> list['Dns']:
-        """Get all DNS records
-
-        Example:
-        >>> x = pyrkbun.dns.get_all_records('example.com')
-        """
-        path = f'{cls.__api_path}/retrieve/{domain}'
+        if record_id or name:
+            path = f'{cls.__api_path}/retrieve/{domain}/{record_id}' if record_id \
+                else f'{cls.__api_path}/retrieveByNameType/{domain}/{record_type}/{name}'
+        else:
+            path = f'{cls.__api_path}/retrieveByNameType/{domain}/{record_type}' if record_type \
+                else f'{cls.__api_path}/retrieve/{domain}'
 
         response = api_post(path)
         records = cls.__cls_creator_formatter(domain, response)
@@ -195,26 +172,30 @@ class Dns():
     @classmethod
     def delete_record(cls,
                       domain: str,
-                      r_type: str = None,
+                      record_type: str = None,
                       name: str = None,
-                      r_id: str = None) -> dict:
+                      record_id: str = None) -> dict:
         """Delete a specific DNS record
 
         Usage:
-        Either provide the record name and type (r_type),
+        Either provide the record name and type (record_type),
         or the record ID.
 
         Example 1, Get by record name and type:
         >>> x = pyrkbun.dns.delete_record('example.com', 'A', 'www')
+        >>> print(x)
+        {'status': 'SUCCESS'}
 
         Example 2, Get by record ID:
         >>> x = pyrkbun.dns.delete_record('example.com', r_id ='253440859')
+        >>> print(x)
+        {'status': 'SUCCESS'}
         """
-        if r_type:
-            assert r_type in SUPPORTED_DNS_RECORD_TYPES
+        if record_type:
+            assert record_type in SUPPORTED_DNS_RECORD_TYPES
 
-        path = f'{cls.__api_path}/retrieve/{domain}/{r_id}' if r_id \
-            else f'{cls.__api_path}/deleteByNameType/{domain}/{r_type}/{name}'
+        path = f'{cls.__api_path}/delete/{domain}/{record_id}' if record_id \
+            else f'{cls.__api_path}/deleteByNameType/{domain}/{record_type}/{name}'
         response = api_post(path)
         return response
 
@@ -222,10 +203,11 @@ class Dns():
     def edit_record(cls,
                     domain: str,
                     updates: dict,
-                    r_type: str = None,
+                    record_type: str = None,
                     name: str = None,
-                    r_id: str = None) -> dict:
+                    record_id: str = None) -> dict:
         """Edit a specific DNS record
+
         Usage:
         Provide domain and a formatted dict containing record content
 
@@ -240,29 +222,29 @@ class Dns():
         >>> print(x)
         {'status': 'SUCCESS'}
         """
-        if r_type:
-            assert r_type in SUPPORTED_DNS_RECORD_TYPES
+        if record_type:
+            assert record_type in SUPPORTED_DNS_RECORD_TYPES
 
-        path = f'{cls.__api_path}/edit/{domain}/{r_id}' if r_id \
-            else f'{cls.__api_path}/editByNameType/{domain}/{r_type}/{name}'
+        path = f'{cls.__api_path}/edit/{domain}/{record_id}' if record_id \
+            else f'{cls.__api_path}/editByNameType/{domain}/{record_type}/{name}'
         response = api_post(path, updates)
         return response
 
     def refresh(self) -> dict:
         """Refresh DNS class instance details from API
         """
-        path = f'{self.__api_path}/retrieve/{self.domain}/{self.r_id}'
+        path = f'{self.__api_path}/retrieve/{self.domain}/{self.record_id}'
         response = api_post(path)
-        if 'notes' not in response['records'][0].keys():
-            response['records'][0]['notes'] = ''
-        self.name = response['records'][0]['name']
-        self.r_type = response['records'][0]['type']
-        self.content= response['records'][0]['content']
-        self.ttl = response['records'][0]['ttl']
-        self.prio = response['records'][0]['prio']
-        self.notes = response['records'][0]['notes']
-        self.r_id = response['records'][0]['id']
-        self.state = 'SYNC'
+        record: dict = response['records'][0]
+        if 'notes' not in record.keys():
+            record['notes'] = ''
+        self.name = record['name']
+        self.record_type = record['type']
+        self.content = record['content']
+        self.ttl = record['ttl']
+        self.prio = record['prio']
+        self.notes = record['notes']
+        self.record_id = record['id']
         return response
 
     def create(self) -> dict:
@@ -270,14 +252,13 @@ class Dns():
         """
         path = f'{self.__api_path}/create/{self.domain}'
         payload = {'name': self.name,
-                   'type': self.r_type,
+                   'type': self.record_type,
                    'content': self.content,
                    'ttl': self.ttl,
                    'prio': self.prio,
                    'notes': self.notes}
         response = api_post(path, payload)
-        self.r_id = response['id']
-        self.state = 'SYNC'
+        self.record_id = response['id']
         return response
 
     def update(self) -> dict:
@@ -286,21 +267,19 @@ class Dns():
         Note: Attempting an update without any valid changes to the DNS
         record will result in an API Error.
         """
-        path = f'{self.__api_path}/edit/{self.domain}/{self.r_id}'
+        path = f'{self.__api_path}/edit/{self.domain}/{self.record_id}'
         payload = {'name': self.name,
-                   'type': self.r_type,
+                   'type': self.record_type,
                    'content': self.content,
                    'ttl': self.ttl,
                    'prio': self.prio,
                    'notes': self.notes}
         response = api_post(path, payload)
-        self.state = 'SYNC'
         return response
 
     def delete(self) -> dict:
         """Delete DNS record represented by class instance
         """
-        path = f'{self.__api_path}/delete/{self.domain}/{self.r_id}'
+        path = f'{self.__api_path}/delete/{self.domain}/{self.record_id}'
         response = api_post(path)
-        self.state = 'DELETED'
         return response
