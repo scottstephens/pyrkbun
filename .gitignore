@@ -1,6 +1,9 @@
 # Development environmment variables
 .env
 
+# osx ds_store
+.ds_store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

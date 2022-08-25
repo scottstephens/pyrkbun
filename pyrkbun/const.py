@@ -12,9 +12,12 @@ BASE_URL_V4: Optional Porkbun API base URL supporting IPv4 only.
 BASE_URL: Effective Base URL to be used for all API requests
 """
 from os import getenv
-from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ModuleNotFoundError:
+    pass
 
 API_KEY: str = getenv('PYRK_API_KEY')
 API_SECRET_KEY: str = getenv('PYRK_API_SECRET_KEY')

@@ -193,12 +193,12 @@ class Dns():
         Either provide the record name and type (record_type),
         or the record ID.
 
-        Example 1, Get by record name and type:
+        Example 1, Delete by record name and type:
         >>> x = pyrkbun.dns.delete_record('example.com', 'A', 'www')
         >>> print(x)
         {'status': 'SUCCESS'}
 
-        Example 2, Get by record ID:
+        Example 2, Delete by record ID:
         >>> x = pyrkbun.dns.delete_record('example.com', r_id ='253440859')
         >>> print(x)
         {'status': 'SUCCESS'}
@@ -230,7 +230,7 @@ class Dns():
                       'ttl': '620',
                       'prio': '0',
                       'notes': 'Company website'}
-        >>> x = pyrkbun.dns.create_record('example.com', record)
+        >>> x = pyrkbun.dns.edit_record('example.com', record)
         >>> print(x)
         {'status': 'SUCCESS'}
         """
@@ -282,7 +282,7 @@ class Dns():
         Usage:
         Execute method on class instance to create a new record and
         populate record ID
-        
+
         Example:
         >>> x = pyrkbun.dns('example.com',
                             'A',

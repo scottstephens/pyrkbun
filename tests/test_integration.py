@@ -5,12 +5,15 @@ ONLY RUN THESE TESTS AGAINST A DOMAIN THAT IS PREPARED FOR THESE CHANGES
 import unittest
 from unittest.mock import patch
 from os import getenv
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ModuleNotFoundError:
+    pass
 
 import pyrkbun
-from pyrkbun.const import ApiError
+from pyrkbun import ApiError
 
-load_dotenv()
 
 # These constants enable you to customise which test suites to run
 # Set applicable environment variables to control test suite execution

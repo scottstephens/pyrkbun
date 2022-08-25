@@ -12,8 +12,8 @@ def get(domain):
     {'status': 'SUCCESS',
     "intermediatecertificate": "<cert-data>",
 	"certificatechain": "<cert-data>",
-	"privatekey": ""<cert-data>",
-	"publickey": ""<cert-data>"}
+	"privatekey": "<cert-data>",
+	"publickey": "<cert-data>"}
     """
     path = f'/ssl/retrieve/{domain}'
     response = api_post(path)

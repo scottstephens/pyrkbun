@@ -32,6 +32,10 @@ def api_post(path: str, payload: dict = None, auth: bool = True, force_v4: bool 
     with http_client as http_client:
         response = http_client.post(path, json=payload)
     result: dict = response.json()
+    # Remove api auth data added to keys to prevent accidental exposure and allow
+    # reuse of dicts provided to create and update functions
+    payload.pop('apikey', None)
+    payload.pop('secretapikey', None)
 
     # pylint: disable=no-else-return
     if response.status_code in VALID_HTTP_RESPONSE:
