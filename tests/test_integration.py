@@ -12,6 +12,8 @@ from pyrkbun.const import ApiError
 
 load_dotenv()
 
+# These constants enable you to customise which test suites to run
+# Set applicable environment variables to control test suite execution
 TEST_DOMAIN_NAME: str = getenv('PYRK_TEST_DOMAIN_NAME')
 TEST_SSL: str = getenv('PYRK_TEST_SSL')
 TEST_DNS_RETRIEVE: str = getenv('PYRK_TEST_DNS_RETRIEVE')
@@ -72,6 +74,7 @@ class PricingIntegrationTests(unittest.TestCase):
 class SslIntegrationTests(unittest.TestCase):
     """Test SSL API
     WARNING: This test suite will retirieve private certificate data for your domain
+    If the SSL cert is not available for this domian the test will be auto skipped
     """
     def test_ssl_get(self):
         """Validate data returned from pricing API
@@ -103,7 +106,7 @@ class DnsRetrievalIntegrationTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        """Create test records
+        """Setup test records
         """
         test_records = [{'name': 'pyrkbuntesta',
                          'type': 'A',
@@ -137,7 +140,7 @@ class DnsRetrievalIntegrationTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        """Delete test records
+        """Cleanup test records
         """
         for record in cls.test_records:
             pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
@@ -195,7 +198,7 @@ class DnsRetrievalIntegrationTests(unittest.TestCase):
             self.assertEqual(test_record['type'], target_record.record_type)
 
     def test_record_refresh(self):
-        """Test record refresh method
+        """Test record refresh instance method
         """
         test_record = [record for record in self.test_records if record['type'] == 'AAAA'][0]
         target_record = pyrkbun.dns(TEST_DOMAIN_NAME, 'A', 'BAR', record_id=test_record['id'])
@@ -447,7 +450,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        """Create test records
+        """Setup test records
         """
         test_records = [{'name': 'pyrkbuntesta',
                          'type': 'A',
@@ -475,7 +478,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        """Delete test records
+        """Cleanup test records if any remain
         """
         for record in cls.test_records:
             try:
@@ -494,7 +497,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
         self.assertListEqual(check, [])
 
     def test_delete_by_name_type_class_method(self):
-        """Test deletion of record by id using class method
+        """Test deletion of record by name and type using class method
         """
         record = [record for record in self.test_records if record['type'] == 'AAAA'][0]
         result = pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record['type'], record['name'])
@@ -503,7 +506,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
         self.assertListEqual(check, [])
 
     def test_delete_by_instance_method(self):
-        """Test deletion of record by id using class method
+        """Test deletion of record using class instance method
         """
         record = [record for record in self.test_records if record['type'] == 'MX'][0]
         retrieved_record = pyrkbun.dns.get_records(TEST_DOMAIN_NAME, record_id = record['id'])[0]
@@ -515,7 +518,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
 
 @unittest.skipUnless(TEST_DNS_MODIFY, 'PYRK_TEST_DNS_MODIFY env not set, skipping')
 class DnsModifyIntegrationTests(unittest.TestCase):
-    """Test DNS API for record deletion
+    """Test DNS API for record modification
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
     All records created SHOULD be automatically REMOVED on test completion
     """

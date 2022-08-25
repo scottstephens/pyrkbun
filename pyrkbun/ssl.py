@@ -4,6 +4,7 @@ from .util import api_post
 
 def get(domain):
     """Retrieve the SSL certificate bundle for the domain.
+    
     Example:
     >>> import pyrkbun
     >>> response = pyrkbun.ssl.get('example.com')

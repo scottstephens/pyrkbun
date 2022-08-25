@@ -28,6 +28,18 @@ class Dns():
     record represnted by the class details.
     Alternatively, a range of class methods are available to send API
     commands without the need to first instantiate the class.
+
+    Example:
+    >>> x = pyrkbun.dns('example.com',
+                        'A',
+                        '198.51.100.45',
+                        'www',
+                        '620',
+                        '0',
+                        'Company website')
+    >>> x.create()
+    >>> x.refresh()
+    >>> x.delete()
     '''
 
     # Just the right number of instance attributes
@@ -232,6 +244,23 @@ class Dns():
 
     def refresh(self) -> dict:
         """Refresh DNS class instance details from API
+
+        Usage:
+        Execute method on class instance to ensure record is in sync
+        with origin server
+
+        Example:
+        >>> x=pyrkbun.dns.get_records('example.com', 'A', 'www')[0]
+        >>> print(x)
+        Dns(domain='example.com', record_type='A', content='198.51.100.45',
+        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
+        ...
+        Record name change to 'web' out of band (i.e. management console)
+        ...
+        >>> x.refresh()
+        >>> print(x)
+        Dns(domain='example.com', record_type='A', content='198.51.100.45',
+        name='web', ttl='620', prio='0', notes='Company website', record_id='253916852')
         """
         path = f'{self.__api_path}/retrieve/{self.domain}/{self.record_id}'
         response = api_post(path)
@@ -249,6 +278,28 @@ class Dns():
 
     def create(self) -> dict:
         """Create record based on class instance attributes
+
+        Usage:
+        Execute method on class instance to create a new record and
+        populate record ID
+        
+        Example:
+        >>> x = pyrkbun.dns('example.com',
+                            'A',
+                            '198.51.100.45',
+                            'www',
+                            '620',
+                            '0',
+                            'Company website')
+        >>> print(x)
+        Dns(domain='example.com', record_type='A', content='198.51.100.45',
+        name='www', ttl='620', prio='0', notes='Company website', record_id='')
+        >>> result = x.create()
+        >>> print(result)
+        {'status': 'SUCCESS', 'id': 253916852}
+        >>> print(x)
+        Dns(domain='example.com', record_type='A', content='198.51.100.45',
+        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
         """
         path = f'{self.__api_path}/create/{self.domain}'
         payload = {'name': self.name,
@@ -263,6 +314,25 @@ class Dns():
 
     def update(self) -> dict:
         """Update record based on class instance attributes
+
+        Usage:
+        Execute method on class instance following updates to instance
+        attributes to push updates to origin server.
+        Record ID MUST be populated.
+
+        Example:
+        >>> x=pyrkbun.dns.get_records('example.com', 'A', 'www')[0]
+        >>> print(x)
+        Dns(domain='example.com', record_type='A', content='198.51.100.45',
+        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
+        >>> x.name = 'web'
+        >>> x.ttl = '990'
+        >>> result = x.update()
+        >>> print(result)
+        {'status': 'SUCCESS'}
+        >>> print(x)
+        Dns(domain='example.com', record_type='A', content='198.51.100.45',
+        name='web', ttl='990', prio='0', notes='Company website', record_id='253916852')
 
         Note: Attempting an update without any valid changes to the DNS
         record will result in an API Error.
@@ -279,6 +349,19 @@ class Dns():
 
     def delete(self) -> dict:
         """Delete DNS record represented by class instance
+
+        Usage:
+        Execute method on class intance to delete record on origin server.
+        Record ID MUST be populated.
+
+        Example:
+        >>> x=pyrkbun.dns.get_records('example.com', 'A', 'www')[0]
+        >>> print(x)
+        Dns(domain='example.com', record_type='A', content='198.51.100.45',
+        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
+        >>> result = x.delete()
+        >>> print(result)
+        {'status': 'SUCCESS'}
         """
         path = f'{self.__api_path}/delete/{self.domain}/{self.record_id}'
         response = api_post(path)
