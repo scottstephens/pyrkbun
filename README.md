@@ -8,7 +8,7 @@ Install pyrkbun using pip.
 pip install pyrkbun
 ```
 ### Enable porkbun.com API access
-You will need to ensure that you have API access enabled for your domain and an API Access Key / Secret Key. Details on how to configure your domain fro API access can be found on the [pokbun website](https://kb.porkbun.com/article/190-getting-started-with-the-porkbun-api)
+You will need to ensure that you have API access enabled for your domain and an API Access Key / Secret Key. Details on how to configure your domain fro API access can be found on the [porkbun website](https://kb.porkbun.com/article/190-getting-started-with-the-porkbun-api)
 
 ### Configure Environment
 Before using pyrkbun you will need to set a couple of envorinment variables to hold your API credentails.
