@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyrkbun"
-version = "1.0.0"
+version = "1.0.1"
 description = "An unoffical Python interface for the Porkbun domain registrars API"
 readme = "README.md"
 authors = [{ name = "jxg81" }]
