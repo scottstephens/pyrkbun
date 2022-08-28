@@ -22,7 +22,7 @@ except ModuleNotFoundError:
 API_KEY: str = getenv('PYRK_API_KEY')
 API_SECRET_KEY: str = getenv('PYRK_API_SECRET_KEY')
 FORCE_V4: str = getenv('PYRK_FORCE_V4')
-
+RATE_LIMIT: float = float(getenv('PYRK_RATE')) if getenv('PYRK_RATE') else 0
 VALID_HTTP_RESPONSE: set = {200}
 
 BASE_URL_V64: str = 'https://porkbun.com/api/json/v3'
@@ -57,3 +57,20 @@ class ApiError(Exception):
 
     def __repr__(self) -> str:
         return f'ApiError({self.http_status}, {self.status}, {self.message})'
+
+
+class ApiFailure(Exception):
+    """Porkbun REST API Failure - non-json return
+
+    Attributes:
+        http_status: HTTP status code returned from API
+        message: Content returned from server
+    """
+
+    def __init__(self, http_status, message):
+        super().__init__()
+        self.http_status: int = http_status
+        self.message: str = message
+
+    def __repr__(self) -> str:
+        return f'ApiError({self.http_status}, {self.message})'
