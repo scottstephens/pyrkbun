@@ -18,7 +18,11 @@ export PYRK_API_KEY = 'sk_abcdef123456789abcdef123456789abcdef'
 ```
 By default pyrkbun will utilise the default porkbun.com API endpoint which supports both IPv4 and IPv6. To force IPv4 only you can set an additional environement variable as follows.
 ```
-export PYRK_FORCE_V4 = True
+export PYRK_FORCE_V4=True
+```
+If you are on a low latency path to the Porkbun service you may hit API rate limits and get 503 returned from the API resulting in ApiFailure exception being raised. You can set a rate limit environment variable to automatically add a delay in seconds before each API call. If this variable is not set no dealy will be addded.
+```
+export PYRK_RATE=1.5
 ```
 ## Using pyrkbun
 pyrkbun exposes all of the porkbun.com api functionality through a set of functions and classes. Functionality is grouped into sub-modules as follows:
