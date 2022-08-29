@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyrkbun"
-version = "1.0.1"
+version = "1.0.2"
 description = "An unoffical Python interface for the Porkbun domain registrars API"
 readme = "README.md"
 authors = [{ name = "jxg81" }]
@@ -14,6 +14,7 @@ license = { file = "LICENSE" }
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Natural Language :: English",
 ]
@@ -21,7 +22,7 @@ keywords = ["API", "Porkbun", "DNS", "Registrar"]
 dependencies = [
     "httpx[http2] >= 0.23.0",
 ]
-requires-python = ">=3.10.6"
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = ["python-dotenv", "setuptools"]

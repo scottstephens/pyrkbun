@@ -1,4 +1,15 @@
 # pyrkbun - Python library for the porkbun.com API
+
+[![pypi](https://img.shields.io/pypi/v/pyrkbun)](https://pypi.org/project/pyrkbun/)
+[![GitHub release](https://img.shields.io/github/release/jxg81/pyrkbun.svg)](https://github.com/jxg81/pyrkbun/releases)
+[![Hex.pm](https://img.shields.io/hexpm/l/plug)](https://www.apache.org/licenses/LICENSE-2.0)
+
+[![Github CI](https://github.com/jxg81/pyrkbun/actions/workflows/python-test.yml/badge.svg)](https://github.com/jxg81/pyrkbun/actions)
+[![Github CD](https://github.com/jxg81/pyrkbun/actions/workflows/python-publish.yml/badge.svg)](https://github.com/jxg81/pyrkbun/actions)
+
+
+[![paypal](https://img.shields.io/badge/donate-paypal-blue)](https://www.paypal.com/donate/?business=MP4ZR6WS8UPX8&no_recurring=0&item_name=%28jxg81%29+-+Thanks+for+your+support.&currency_code=AUD)
+
 pyrkbun is an unoffical python library for interfacing with the porkbun.com API
 
 ## Getting Started
@@ -8,7 +19,7 @@ Install pyrkbun using pip.
 pip install pyrkbun
 ```
 ### Enable porkbun.com API access
-You will need to ensure that you have API access enabled for your domain and an API Access Key / Secret Key. Details on how to configure your domain fro API access can be found on the [porkbun website](https://kb.porkbun.com/article/190-getting-started-with-the-porkbun-api)
+You will need to ensure that you have API access enabled for your domain and an API Access Key / Secret Key. Details on how to configure your domain for API access can be found on the [porkbun website](https://kb.porkbun.com/article/190-getting-started-with-the-porkbun-api)
 
 ### Configure Environment
 Before using pyrkbun you will need to set a couple of envorinment variables to hold your API credentails.
