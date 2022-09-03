@@ -202,7 +202,7 @@ Porkbun provides a simple API endpoint for polling the API and returning your cu
 # Using pyrkbun CLI from the terminal (BETA)
 You can utilise the functionality of pyrkbun directly from the terminal without the need to write your own python code.
 
-The cli interface is availble uusing the command `pyrkbun`
+The cli interface is availble using the command `pyrkbun`
 
 Help is available from the command line
 ```
