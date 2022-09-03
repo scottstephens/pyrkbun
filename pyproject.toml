@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyrkbun"
-version = "1.0.2"
+version = "1.2.0"
 description = "An unoffical Python library and CLI for the Porkbun domain registrars API"
 readme = "README.md"
 authors = [{ name = "jxg81" }]
@@ -20,7 +20,8 @@ classifiers = [
 ]
 
 keywords = ["API", "Porkbun", "DNS", "Registrar"]
-dependencies = ["httpx[http2]", "argparse", "colorama"]
+
+dependencies = ["httpx[http2]", "colorama"]
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
