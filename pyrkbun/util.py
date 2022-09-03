@@ -1,7 +1,7 @@
 """Utilities
 """
-import httpx
 import time
+import httpx
 
 from .const import ApiError, ApiFailure
 from .const import API_KEY, API_SECRET_KEY, BASE_URL, BASE_URL_V4, VALID_HTTP_RESPONSE, RATE_LIMIT

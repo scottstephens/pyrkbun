@@ -50,7 +50,7 @@ class ApiError(Exception):
     """
 
     def __init__(self, http_status, status, message):
-        super().__init__()
+        super().__init__(message)
         self.http_status: int = http_status
         self.status: str = status
         self.message: str = message
@@ -68,7 +68,7 @@ class ApiFailure(Exception):
     """
 
     def __init__(self, http_status, message):
-        super().__init__()
+        super().__init__(message)
         self.http_status: int = http_status
         self.message: str = message
 
