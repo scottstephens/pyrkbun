@@ -225,12 +225,12 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
 
     print(f'{Fore.BLUE}{Style.DIM}Collecting existing records')
     existing_records: dict = json.loads(run_dns(run_dns_args))
-    
+
     # Remove NS records from all operations unless explicitly included
     if not include_ns:
         existing_records = [record for record in existing_records if record['type'] != 'NS']
-        user_provided_records = [record for record in user_provided_records if record['type'] != 'NS']
-    
+        user_provided_records = [record for record in user_provided_records if record['type'] != 'NS'] #pylint: disable=line-too-long
+
     if mode == 'flush':
         deleted = delete_records(domain, existing_records)
         created = create_records(domain, user_provided_records)

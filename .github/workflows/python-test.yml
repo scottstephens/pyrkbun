@@ -40,5 +40,6 @@ jobs:
         PYRK_TEST_DNS_BULK: 'True'
         PYRK_RATE: '1.5'
         PYRK_RETRIES: '2'
+        PYTHONPATH: ${{ github.workspace }}
       run: |
         python3 -m unittest discover ./tests "test_*.py" -v

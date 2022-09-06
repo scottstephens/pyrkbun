@@ -1,5 +1,4 @@
 """Test Pyrkbun CLI"""
-import time
 import json
 import subprocess
 import unittest
@@ -26,14 +25,15 @@ TEST_DNS_DELETE: str = getenv('PYRK_TEST_DNS_DELETE')
 TEST_DNS_MODIFY: str = getenv('PYRK_TEST_DNS_MODIFY')
 TEST_DNS_BULK: str =  getenv('PYRK_TEST_DNS_BULK')
 
+PYRK_CLI = 'pyrkbun.cli'
 class CliIntegrationTestsPing(unittest.TestCase):
     """Test API ping operation from CLI
     """
-        
+
     def test_ping(self):
         """Test API ping using the v4/v6 API host
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'ping']
+        command = ['python', '-m', PYRK_CLI, 'ping']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
         self.assertEqual(result.returncode, 0)
@@ -43,7 +43,7 @@ class CliIntegrationTestsPing(unittest.TestCase):
     def test_ping_v4_explicit(self):
         """Test API ping using the v4 only API via explicit setting
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'ping', '-v4']
+        command = ['python', '-m', PYRK_CLI, 'ping', '-v4']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
         ip_add = output['yourIp']
@@ -56,7 +56,7 @@ class CliIntegrationTestsPing(unittest.TestCase):
     def test_ping_v4_implicit(self):
         """Test API ping using the v4 only API host inherited from environ
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'ping', '-v4']
+        command = ['python', '-m', PYRK_CLI, 'ping', '-v4']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
         ip_add = output['yourIp']
@@ -72,7 +72,7 @@ class PricingCliIntegrationTests(unittest.TestCase):
     def test_get_pricing(self):
         """Validate data returned from pricing API
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'pricing']
+        command = ['python', '-m', PYRK_CLI, 'pricing']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
         price_data: dict = output['pricing']
@@ -89,15 +89,15 @@ class SslCliIntegrationTests(unittest.TestCase):
     WARNING: This test suite will retirieve private certificate data for your domain
     If the SSL cert is not available for this domian the test will be auto skipped
     """
-    
+
     def test_get_ssl(self):
         """Validate data returned from SSL API
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'ssl', TEST_DOMAIN_NAME]
+        command = ['python', '-m', PYRK_CLI, 'ssl', TEST_DOMAIN_NAME]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         if result.stdout == 'API Error -> The SSL certificate is not ready for this domain.\n':
             self.skipTest('Skipping test as domain does not hold ssl cert')
-        
+
         output = json.loads(result.stdout)
         cert_int: str = output["intermediatecertificate"][0:27]
         cert_chain: str = output["certificatechain"][0:27]
@@ -158,11 +158,11 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
         """
         for record in cls.test_records:
             pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
-    
+
     def test_dns_get_all_records(self):
         """Test retrival of all records
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'get']
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'get']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         dns_records = json.loads(result.stdout)
         a_count = 0
@@ -182,10 +182,10 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
     def test_get_records_by_type(self):
         """Test retrival of all records by type using class method
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'get', '-type', 'MX']
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'get', '-type', 'MX']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         dns_records = json.loads(result.stdout)
-        dns_records = [record for record in dns_records if record['content'][0:11] == 'pyrkbuntest']
+        dns_records = [record for record in dns_records if record['content'][0:11] == 'pyrkbuntest'] #pylint: disable=line-too-long
         self.assertEqual(len(dns_records), 2)
         for record in dns_records:
             self.assertIn('id', record.keys())
@@ -199,7 +199,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
     def test_get_records_by_type_and_name(self):
         """Test retrival by type and name using class method
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME,
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME,
                    'get', '-type', 'A', '-name', 'pyrkbuntesta']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         dns_records = json.loads(result.stdout)
@@ -212,7 +212,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
         """Test retrival of records by id using class method
         """
         for test_record in self.test_records:
-            command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME,
+            command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME,
                        'get', '-id', test_record['id']]
             result = subprocess.run(command, capture_output=True, text=True, check=True)
             dns_records = json.loads(result.stdout)
@@ -314,14 +314,14 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """
         for record_id in cls.created_record_ids:
             pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record_id)
-        
+
     def test_create_a_record(self):
         """Test creation of A record
         """
         config: dict = self.test_data['A']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -335,9 +335,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of AAAA record
         """
         config: dict = self.test_data['AAAA']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -351,9 +351,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of MX record
         """
         config: dict = self.test_data['MX']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -367,9 +367,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of CNAME record
         """
         config: dict = self.test_data['CNAME']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -383,9 +383,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of ALIAS record
         """
         config: dict = self.test_data['ALIAS']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -399,9 +399,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of TXT record
         """
         config: dict = self.test_data['TXT']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -415,9 +415,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of NS record
         """
         config: dict = self.test_data['NS']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -431,7 +431,7 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of SRV record
         """
         config: dict = self.test_data['SRV']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
                    config['content'], '-priority', config['prio'], '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -449,9 +449,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of TLSA record
         """
         config: dict = self.test_data['TLSA']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -465,9 +465,9 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Test creation of CAA record
         """
         config: dict = self.test_data['CAA']
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'create',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'create',
                    '-name', config['name'], '-type', config['record_type'], '-content',
-                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'], 
+                   config['content'], '-ttl', config['ttl'], '-priority', config['prio'],
                    '-notes', config['notes']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -522,7 +522,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
         """Test deletion of record by id
         """
         record = [record for record in self.test_records if record['type'] == 'A'][0]
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'delete',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'delete',
                    '-id', record['id']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -534,7 +534,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
         """Test deletion of record by name and type
         """
         record = [record for record in self.test_records if record['type'] == 'AAAA'][0]
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'delete',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'delete',
                    '-name', record['name'], '-type', record['type']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
@@ -587,7 +587,7 @@ class DnsModifyIntegrationTests(unittest.TestCase):
         """Test edit of record by id
         """
         record = [record for record in self.test_records if record['type'] == 'A'][0]
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'edit',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'edit',
                    '-id', record['id'], '-name', 'pyrkbuntestaedit', '-ttl', '680',
                    '-content', '198.51.100.55', '-type', 'A']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -602,7 +602,7 @@ class DnsModifyIntegrationTests(unittest.TestCase):
         """Test edit of record by type and name
         """
         record = [record for record in self.test_records if record['type'] == 'AAAA'][0]
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'edit',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'edit',
                    '-id', record['id'], '-name', 'pyrkbuntestaaaa', '-ttl', '700',
                    '-content', '2001:0db8:85a3:0000:0000:8a2e:0370:adef', '-type', 'AAAA']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -630,7 +630,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
         """
         backup = pyrkbun.dns.get_records(TEST_DOMAIN_NAME)
         cls.backup = [record for record in backup if record.record_type != 'NS']
-    
+
     @classmethod
     def tearDownClass(cls) -> None:
         """Clean up any records left after test run and restore backup
@@ -665,9 +665,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                          'notes': 'pyrkbun test MX record 1'}]
         self.test_records = []
         for record in test_records:
-            print(record)
             create = pyrkbun.dns.create_record(TEST_DOMAIN_NAME, record)
-            print(create)
             test_data = {'id': str(create['id']), 'name': record['name'], 'type': record['type']}
             self.test_records.append(test_data)
 
@@ -686,7 +684,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
     def test_dns_bulk_flush(self):
         """Test bulk operation using 'flush' mode
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'bulk',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'bulk',
                    './tests/fixtures/bulk_test_flush_input.json',
                    './tests/fixtures/bulk_test_flush_output.json',
                    '-mode', 'flush']
@@ -703,11 +701,11 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
             self.assertIn(record.content, ('198.51.100.55', 'pyrkbuntestaflush.example.com'))
             self.assertIn(record.record_type, ('A', 'MX'))
             self.assertIsNotNone(record.record_id)
-        
+
     def test_dns_bulk_add(self):
         """Test bulk operation using 'add' mode
         """
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'bulk',
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'bulk',
                    './tests/fixtures/bulk_test_add_input.json',
                    './tests/fixtures/bulk_test_add_output.json',
                    '-mode', 'add']
@@ -728,7 +726,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
             self.assertIn(record['content'], ('198.51.100.55', 'pyrkbuntestaadd.example.com'))
             self.assertIn(record['type'], ('A', 'MX'))
             self.assertIn('id', record.keys())
-        
+
     def test_dns_bulk_merge(self):
         """Test bulk operation using 'merge' mode
         """
@@ -745,11 +743,11 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                 if edit_record['name'] == test_record['name']:
                     edit_record.update({'id': test_record['id']})
                     edit_record_ids.append(test_record['id'])
-                    
+
         with open(input_file, 'w', encoding='utf8') as file:
             json.dump(edit_content, file)
-    
-        command = ['python', '-m', 'pyrkbun.cli', 'dns', TEST_DOMAIN_NAME, 'bulk',
+
+        command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'bulk',
                    './tests/fixtures/bulk_test_merge_input.json',
                    './tests/fixtures/bulk_test_merge_output.json',
                    '-mode', 'merge']
@@ -763,18 +761,18 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
             for key, value in item.items():
                 if key == 'record':
                     created.append(value)
-        
+
         for record in check:
             if record.record_id in edit_record_ids:
                 self.assertIn(record.content,
                               ('198.51.100.101', '2001:0db8:85a3:0000:0000:8a2e:0370:abcd'))
                 self.assertIn(record.record_type, ('A', 'AAAA'))
                 self.assertIn(record.name, ('pyrkbuntesta', 'pyrkbuntestaaaa'))
-                
+
             elif record.record_id == created[0]['id']:
                 self.assertEqual(record.name, 'pyrkbuntestaadd')
         self.assertTrue(path.exists('./tests/fixtures/bulk_test_merge_output.json'))
         self.assertEqual(len(created), 1)
-        
+
 if __name__ == 'main':
     unittest.main()
