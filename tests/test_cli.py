@@ -180,7 +180,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
         self.assertEqual(mx_count, 2)
 
     def test_get_records_by_type(self):
-        """Test retrival of all records by type using class method
+        """Test retrival of all records by type using cli
         """
         command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'get', '-type', 'MX']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -197,7 +197,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
             self.assertEqual('MX', record['type'])
 
     def test_get_records_by_type_and_name(self):
-        """Test retrival by type and name using class method
+        """Test retrival by type and name using cli
         """
         command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME,
                    'get', '-type', 'A', '-name', 'pyrkbuntesta']
@@ -209,7 +209,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
         self.assertEqual('A', target_record['type'])
 
     def test_get_records_by_id(self):
-        """Test retrival of records by id using class method
+        """Test retrival of records by id using cli
         """
         for test_record in self.test_records:
             command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME,

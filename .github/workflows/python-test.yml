@@ -42,4 +42,6 @@ jobs:
         PYRK_RETRIES: '2'
         PYTHONPATH: ${{ github.workspace }}
       run: |
-        python3 -m unittest discover ./tests "test_*.py" -v
+            python3 -m pyrkbun.cli ping      
+
+# python3 -m unittest discover ./tests "test_*.py" -v
