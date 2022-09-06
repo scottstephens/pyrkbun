@@ -9,7 +9,7 @@ test-data/
 
 # Files createed during unit tests
 tests/fixtures/*_output.json
-tests/fixtures/*_add_input.json
+tests/fixtures/*_merge_input.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
