@@ -10,7 +10,25 @@
 
 [![paypal](https://img.shields.io/badge/donate-paypal-blue)](https://www.paypal.com/donate/?business=MP4ZR6WS8UPX8&no_recurring=0&item_name=%28jxg81%29+-+Thanks+for+your+support.&currency_code=AUD)
 
-pyrkbun is an unoffical python library for interfacing with the porkbun.com API
+pyrkbun is an unoffical python library and cli interface for interfacing with the porkbun.com API
+
+**Creating a new DNS record using pyrkbun in python:**
+```python
+>>> import pyrkbun
+>>> x = pyrkbun.dns('example.com',
+                    'A',
+                    '198.51.100.45',
+                    'www',
+                    '620',
+                    '0')
+>>> x.create() 
+{'status': 'SUCCESS', 'id': 253916852}
+```
+**Creating a new DNS record using pyrkbun from the command line:**
+```
+% pyrkbun dns example.com create -name www -type A -content 198.51.100.45 -ttl 620
+{"status": "SUCCESS", "id": 256365177}
+```
 # Contents
 - [Getting Started](#getting-started)
   - [Installation](#installation)
@@ -24,7 +42,7 @@ pyrkbun is an unoffical python library for interfacing with the porkbun.com API
     - [dns class methods](#dns-class-methods)
     - [Getting help on working with dns](#getting-help-on-working-with-dns)
   - [pyrkbun ping](#pyrkbun-ping)
-- [Using pyrkbun CLI from the terminal (Beta)](#using-pyrkbun-cli-from-the-terminal-beta)
+- [Using pyrkbun CLI from the terminal](#using-pyrkbun-cli-from-the-terminal)
   - [pyrkbun cli ssl](#pyrkbun-cli-ssl)
   - [pyrkbun cli pricing](#pyrkbun-cli-pricing)
   - [pyrkbun cli dns](#pyrkbun-cli-dns)
@@ -33,6 +51,7 @@ pyrkbun is an unoffical python library for interfacing with the porkbun.com API
     - [edit record](#edit-record)
     - [delete record](#delete-record)
     - [bulk operations](#bulk-operations)
+      - [Include NS records in bulk operations](#include-ns-records-in-bulk-operations)
   - [pyrkbun cli ping](#pyrkbun-cli-ping)
 # Getting Started
 ## Installation
@@ -57,6 +76,10 @@ export PYRK_FORCE_V4=True
 If you are on a low latency path to the Porkbun service you may hit API rate limits and get 503 returned from the API resulting in ApiFailure exception being raised. You can set a rate limit environment variable to automatically add a delay in seconds before each API call. If this variable is not set no dealy will be addded.
 ```
 export PYRK_RATE=1.5
+```
+If you would like pyrkbun to manage retries of API calls for you, simply set the retries environment variable with an integer representing the number of http retries on failed api calls. The default is zero.
+```
+export PYRK_RETRIES=3
 ```
 # Using pyrkbun in your python project
 pyrkbun exposes all of the porkbun.com api functionality through a set of functions and classes. Functionality is grouped into sub-modules as follows:
@@ -199,7 +222,7 @@ Porkbun provides a simple API endpoint for polling the API and returning your cu
 {'status': 'SUCCESS', 'yourIp': '198.51.100.45'}
 ```
 
-# Using pyrkbun CLI from the terminal (BETA)
+# Using pyrkbun CLI from the terminal
 You can utilise the functionality of pyrkbun directly from the terminal without the need to write your own python code.
 
 The cli interface is availble using the command `pyrkbun`
@@ -353,6 +376,12 @@ Example input file:
 ]
 ```
 NOTE: If you attempt to update a record with no changes the API will return an error
+#### **Include NS records in bulk operations**
+By default, pyrkbun will exclude NS records from any bulk operations. If you would like to include these records you can set the '-incns' flag. 
+Example usage:
+```
+% pyrkbun dns example.com bulk ./records.json ./result.json -mode merge
+```
 ## pyrkbun cli ping
 Porkbun provides a simple API endpoint for polling the API and returning your current IP address.
 

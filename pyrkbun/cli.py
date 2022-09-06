@@ -43,19 +43,86 @@ def check_api_creds() -> bool:
 
     return True
 
+# Create, edit and delete fuctions to be called once user options are evaluated
+def create_records(domain, records: list):
+    """Create records in target domain based on supplied records
+    """
+    created: dict = {'SUCCESS': [], 'FAILURE': []}
+    for record in records:
+        record.pop('domain', None)
+        record.pop('id', None)
+        try:
+            result = dns.create_record(domain, record)
+        except (ApiError, ApiFailure) as error:
+            created['FAILURE'].append({'result': error.message, 'record': record})
+            print(f'{Back.RED}{Fore.YELLOW}FAILED to CREATE record:{record}')
+            continue
+        record.update({'id': str(result['id'])})
+        print(f'{Fore.GREEN}CREATED record:{record}')
+        created['SUCCESS'].append({'result': result, 'record': record})
+    return created
+
+def delete_records(domain, records: list):
+    """Delete records in target domain based on supplied records
+    """
+    deleted: dict = {'SUCCESS': [], 'FAILURE': []}
+    for record in records:
+        try:
+            result = dns.delete_record(domain, record_id=record['id'])
+        except (ApiError, ApiFailure) as error:
+            deleted['FAILURE'].append({'result': error.message, 'record': record})
+            print(f'{Back.RED}{Fore.YELLOW}FAILED to DELETE record:{record}')
+            continue
+        print(f'{Fore.GREEN}DELETED record:{record}')
+        deleted['SUCCESS'].append({'result': result, 'record': record})
+    return deleted
+
+def edit_records(domain, records: list):
+    """Edit records in target domain based on supplied records
+    """
+    edited: dict = {'SUCCESS': [], 'FAILURE': []}
+    for record in records:
+        try:
+            record.pop('domain', None)
+            record_id = record.pop('id', None)
+            result = dns.edit_record(domain, record, record_id=record_id)
+            record.update({'id': record_id})
+        except (ApiError, ApiFailure) as error:
+            edited['FAILURE'].append({'result': error.message, 'record': record})
+            print(f'{Back.RED}{Fore.YELLOW}FAILED to EDIT record:{record}')
+            continue
+        print(f'{Fore.GREEN}EDITED record:{record}{Style.RESET_ALL}')
+        edited['SUCCESS'].append({'result': result, 'record': record})
+    return edited
+
 def run_ping(args: argparse.Namespace) -> str:
     """Run Ping"""
-    result: dict = api_ping(args.v4)
+    try:
+        result: dict = api_ping(args.v4)
+    except ApiError as error:
+        return f'{Back.RED}{Fore.YELLOW}API Error -> {error.message}'
+    except ApiFailure as error:
+        return f'{Back.RED}{Fore.YELLOW}API Failure -> {error.message}'
     return json.dumps(result)
 
 def run_pricing(args: argparse.Namespace) -> str: # pylint: disable = unused-argument
     """Run Picing"""
-    result: dict = pricing.get()
+    try:
+        result: dict = pricing.get()
+    except ApiError as error:
+        return f'{Back.RED}{Fore.YELLOW}API Error -> {error.message}'
+    except ApiFailure as error:
+        return f'{Back.RED}{Fore.YELLOW}API Failure -> {error.message}'
     return json.dumps(result)
 
 def run_ssl(args: argparse.Namespace) -> str:
     """Run SSL"""
-    result: dict = ssl.get(args.domain)
+    try:
+        result: dict = ssl.get(args.domain)
+    except ApiError as error:
+        return f'{Back.RED}{Fore.YELLOW}API Error -> {error.message}'
+    except ApiFailure as error:
+        return f'{Back.RED}{Fore.YELLOW}API Failure -> {error.message}'
     return json.dumps(result)
 
 def run_dns(args: argparse.Namespace) -> str: # pylint: disable = too-many-branches
@@ -74,6 +141,7 @@ def run_dns(args: argparse.Namespace) -> str: # pylint: disable = too-many-branc
     priority: str = args.priority
     notes: str = args.notes
 
+    #TODO: Optimise edit process so that record is retieved and unassigned values auto filled
     if command in ('create', 'edit'):
         record = {'name': name,
                   'type': record_type,
@@ -87,6 +155,8 @@ def run_dns(args: argparse.Namespace) -> str: # pylint: disable = too-many-branc
                 records = dns.get_records(domain, record_id=record_id)
             elif name and record_type:
                 records = dns.get_records(domain, record_type, name)
+            elif record_type:
+                records = dns.get_records(domain, record_type)
             else:
                 records = dns.get_records(domain)
 
@@ -137,47 +207,8 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
     created: dict = {'SUCCESS': [], 'FAILURE': []}
     edited: dict = {'SUCCESS': [], 'FAILURE': []}
     deleted: dict = {'SUCCESS': [], 'FAILURE': []}
-    not_found: list = []
-
-    # Create, edit and delete fuctions to be called once user options are evaluated
-    def create_records(records: list):
-        for record in records:
-            record.pop('domain', None)
-            record.pop('id', None)
-            try:
-                result = dns.create_record(domain, record)
-            except (ApiError, ApiFailure) as error:
-                created['FAILURE'].append({'error': error.message, 'record': record})
-                print(f'{Back.RED}{Fore.YELLOW}FAILED to CREATE record:{record}')
-                continue
-            record.update({'id': str(result['id'])})
-            print(f'{Fore.GREEN}CREATED record:{record}')
-            created['SUCCESS'].append({'result': result, 'record': record})
-
-    def delete_records(records: list):
-        for record in records:
-            try:
-                result = dns.delete_record(domain, record_id=record['id'])
-            except (ApiError, ApiFailure) as error:
-                deleted['FAILURE'].append({'result': error.message, 'record': record})
-                print(f'{Back.RED}{Fore.YELLOW}FAILED to DELETE record:{record}')
-                continue
-            print(f'{Fore.GREEN}DELETED record:{record}')
-            deleted['SUCCESS'].append({'result': result, 'record': record})
-
-    def edit_records(records: list):
-        for record in records:
-            try:
-                record.pop('domain', None)
-                record_id = record.pop('id', None)
-                result = dns.edit_record(domain, record, record_id=record_id)
-                record.update({'id': record_id})
-            except (ApiError, ApiFailure) as error:
-                edited['FAILURE'].append({'result': error.message, 'record': record})
-                print(f'{Back.RED}{Fore.YELLOW}FAILED to EDIT record:{record}')
-                continue
-            print(f'{Fore.GREEN}EDITED record:{record}{Style.RESET_ALL}')
-            edited['SUCCESS'].append({'result': result, 'record': record})
+    ignored: list = []
+    include_ns: bool = args.incns
 
     print(f'{Fore.BLUE}{Style.DIM}Loading updated records from file')
     with open(input_file, 'r', encoding='utf8') as file:
@@ -194,13 +225,18 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
 
     print(f'{Fore.BLUE}{Style.DIM}Collecting existing records')
     existing_records: dict = json.loads(run_dns(run_dns_args))
-
+    
+    # Remove NS records from all operations unless explicitly included
+    if not include_ns:
+        existing_records = [record for record in existing_records if record['type'] != 'NS']
+        user_provided_records = [record for record in user_provided_records if record['type'] != 'NS']
+    
     if mode == 'flush':
-        delete_records(existing_records)
-        create_records(user_provided_records)
+        deleted = delete_records(domain, existing_records)
+        created = create_records(domain, user_provided_records)
 
     if mode == 'add':
-        create_records(user_provided_records)
+        created = create_records(domain, user_provided_records)
 
     if mode == 'merge': # pylint: disable = too-many-nested-blocks
         # This is a somewhat complex collection of loop and if's
@@ -241,13 +277,13 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
         for user_record in user_provided_records:
             if user_record not in to_create and user_record not in to_edit:
                 print(f'{Fore.BLUE}{Style.DIM}Adding record to IGNORE list:{user_record}')
-                not_found.append(user_record)
+                ignored.append(user_record)
         # create and edit records as required
-        create_records(to_create)
-        edit_records(to_edit)
+        created = create_records(domain, to_create)
+        edited = edit_records(domain, to_edit)
 
     # Format results to be written to file
-    result = {'CREATED': created, 'EDITED': edited, 'DELETED': deleted, 'IGNORED': not_found}
+    result = {'CREATED': created, 'EDITED': edited, 'DELETED': deleted, 'IGNORED': ignored}
 
     with open(output_file, 'w', encoding='utf8') as file:
         json.dump(result, file)
@@ -361,6 +397,7 @@ For API Secret Key set:
     bulk.set_defaults(func=run_dns_bulk, mode='merge')
     bulk.add_argument('input', help='File containing JSON formatted DNS records')
     bulk.add_argument('output', help='File to write results of bulk operation')
+    bulk.add_argument('-incns', action='store_true', help='Include Name Server Records')
     bulk.add_argument('-mode', choices={'flush', 'merge', 'add'},
                       help='Defaults to merge. '
                     + '"add": Add all records in the provided file. '

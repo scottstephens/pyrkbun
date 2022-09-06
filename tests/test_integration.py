@@ -29,7 +29,7 @@ TEST_DNS_MODIFY: str = getenv('PYRK_TEST_DNS_MODIFY')
 class ApiPingIntegrationTests(unittest.TestCase):
     """Test API ping operation
     """
-    
+
     def test_api_ping_v4_v6(self):
         """Test API ping using the v4/v6 API host
         """
@@ -83,7 +83,7 @@ class SslIntegrationTests(unittest.TestCase):
     """
 
     def test_ssl_get(self):
-        """Validate data returned from pricing API
+        """Validate data returned from SSL API
         """
         try:
             ssl: dict = pyrkbun.ssl.get(TEST_DOMAIN_NAME)

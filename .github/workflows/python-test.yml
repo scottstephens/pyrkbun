@@ -37,6 +37,8 @@ jobs:
         PYRK_TEST_DNS_CREATE: 'True'
         PYRK_TEST_DNS_DELETE: 'True'
         PYRK_TEST_DNS_MODIFY: 'True'
+        PYRK_TEST_DNS_BULK: 'True'
         PYRK_RATE: '1.5'
+        PYRK_RETRIES: '2'
       run: |
         python3 -m unittest discover ./tests "test_*.py" -v

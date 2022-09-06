@@ -5,8 +5,13 @@ import httpx
 
 from .const import ApiError, ApiFailure
 from .const import API_KEY, API_SECRET_KEY, BASE_URL, BASE_URL_V4, VALID_HTTP_RESPONSE, RATE_LIMIT
+from .const import RETRIES
 
-def api_post(path: str, payload: dict = None, auth: bool = True, force_v4: bool = False) -> dict:
+def api_post(path: str,
+             payload: dict = None,
+             auth: bool = True,
+             force_v4: bool = False,
+             retries: int = RETRIES) -> dict:
     """Format request and post to API endpoint
 
     Used by package modules to condoliate logic for API calls.
@@ -30,8 +35,9 @@ def api_post(path: str, payload: dict = None, auth: bool = True, force_v4: bool 
     base_url = BASE_URL_V4 if force_v4 else BASE_URL
     if auth:
         payload.update({'secretapikey': API_SECRET_KEY,'apikey': API_KEY})
+    transport = httpx.HTTPTransport(retries=retries)
     headers = {'content-type': 'application/json'}
-    http_client = httpx.Client(http2=True, base_url=base_url, headers=headers)
+    http_client = httpx.Client(http2=True, base_url=base_url, headers=headers, transport=transport)
     with http_client as client:
         time.sleep(RATE_LIMIT)
         response = client.post(path, json=payload)
