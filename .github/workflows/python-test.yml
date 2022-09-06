@@ -38,7 +38,7 @@ jobs:
         PYRK_TEST_DNS_DELETE: 'True'
         PYRK_TEST_DNS_MODIFY: 'True'
         PYRK_TEST_DNS_BULK: 'True'
-        PYRK_RATE: '5'
+        PYRK_RATE: '10'
         PYRK_RETRIES: '2'
         PYTHONPATH: ${{ github.workspace }}
       run: |
