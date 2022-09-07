@@ -266,7 +266,7 @@ class DnsCreateIntegrationTests(unittest.TestCase):
                                    'domain': TEST_DOMAIN_NAME},
                          'TXT': {'name': '',
                                  'record_type': 'TXT',
-                                 'content': 'txt record test',
+                                 'content': 'txt api record test',
                                  'ttl': '600',
                                  'prio': '0',
                                  'notes': 'pyrkbun test TXT record',

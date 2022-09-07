@@ -1,4 +1,5 @@
 """Test Pyrkbun CLI"""
+import time
 import json
 import subprocess
 import unittest
@@ -668,6 +669,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
             create = pyrkbun.dns.create_record(TEST_DOMAIN_NAME, record)
             test_data = {'id': str(create['id']), 'name': record['name'], 'type': record['type']}
             self.test_records.append(test_data)
+        time.sleep(10)
 
     def tearDown(self) -> None:
         """Cleanup test records
@@ -680,6 +682,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
             except ApiError as error:
                 if error.message == "Invalid record ID.":
                     pass
+        time.sleep(10)
 
     def test_dns_bulk_flush(self):
         """Test bulk operation using 'flush' mode
