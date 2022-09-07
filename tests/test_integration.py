@@ -20,6 +20,8 @@ from pyrkbun import ApiError, ApiFailure
 # These constants enable you to customise which test suites to run
 # Set applicable environment variables to control test suite execution
 TEST_DOMAIN_NAME: str = getenv('PYRK_TEST_DOMAIN_NAME')
+TEST_PING: str = getenv('PYRK_TEST_PING')
+TEST_PRICING: str = getenv('PYRK_TEST_PRICING')
 TEST_SSL: str = getenv('PYRK_TEST_SSL')
 TEST_DNS_TLSA: str = getenv('PYRK_TEST_DNS_TLSA')
 TEST_DNS_RETRIEVE: str = getenv('PYRK_TEST_DNS_RETRIEVE')
@@ -27,6 +29,8 @@ TEST_DNS_CREATE: str = getenv('PYRK_TEST_DNS_CREATE')
 TEST_DNS_DELETE: str = getenv('PYRK_TEST_DNS_DELETE')
 TEST_DNS_MODIFY: str = getenv('PYRK_TEST_DNS_MODIFY')
 
+
+@unittest.skipUnless(TEST_PING, 'PYRK_TEST_PING env not set, skipping')
 class ApiPingIntegrationTests(unittest.TestCase):
     """Test API ping operation
     """
@@ -60,6 +64,7 @@ class ApiPingIntegrationTests(unittest.TestCase):
         self.assertEqual(len(ip_add.split('.')), 4)
 
 
+@unittest.skipUnless(TEST_PRICING, 'PYRK_TEST_PRICING env not set, skipping')
 class PricingIntegrationTests(unittest.TestCase):
     """Test pricing API
     """

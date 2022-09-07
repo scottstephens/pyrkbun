@@ -1,10 +1,19 @@
 """All tests which do not require Porkbun API communication
 """
 import unittest
+from os import getenv
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ModuleNotFoundError:
+    pass
 
 import pyrkbun
 
+TEST_UNIT: str = getenv('PYRK_TEST_UNIT')
 
+@unittest.skipUnless(TEST_UNIT, 'PYRK_TEST_UNTI env not set, skipping')
 class DnsUnitTests(unittest.TestCase):
     """Unit tests on DNS class intialisation and updates
     """

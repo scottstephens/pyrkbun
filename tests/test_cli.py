@@ -19,15 +19,20 @@ from pyrkbun import ApiError, ApiFailure
 # These constants enable you to customise which test suites to run
 # Set applicable environment variables to control test suite execution
 TEST_DOMAIN_NAME: str = getenv('PYRK_TEST_DOMAIN_NAME')
-TEST_SSL: str = getenv('PYRK_TEST_SSL')
+TEST_CLI_PING: str = getenv('PYRK_TEST_CLI_PING')
+TEST_CLI_PRICING: str = getenv('PYRK_TEST_CLI_PRICING')
+TEST_CLI_SSL: str = getenv('PYRK_TEST_CLI_SSL')
 TEST_DNS_TLSA: str = getenv('PYRK_TEST_DNS_TLSA')
-TEST_DNS_RETRIEVE: str = getenv('PYRK_TEST_DNS_RETRIEVE')
-TEST_DNS_CREATE: str = getenv('PYRK_TEST_DNS_CREATE')
-TEST_DNS_DELETE: str = getenv('PYRK_TEST_DNS_DELETE')
-TEST_DNS_MODIFY: str = getenv('PYRK_TEST_DNS_MODIFY')
-TEST_DNS_BULK: str =  getenv('PYRK_TEST_DNS_BULK')
+TEST_CLI_DNS_RETRIEVE: str = getenv('PYRK_TEST_CLI_DNS_RETRIEVE')
+TEST_CLI_DNS_CREATE: str = getenv('PYRK_TEST_CLI_DNS_CREATE')
+TEST_CLI_DNS_DELETE: str = getenv('PYRK_TEST_CLI_DNS_DELETE')
+TEST_CLI_DNS_MODIFY: str = getenv('PYRK_TEST_CLI_DNS_MODIFY')
+TEST_CLI_DNS_BULK: str =  getenv('PYRK_TEST_CLI_DNS_BULK')
 
 PYRK_CLI = 'pyrkbun.cli'
+
+
+@unittest.skipUnless(TEST_CLI_PING, 'PYRK_TEST_CLI_PING env not set, skipping')
 class CliIntegrationTestsPing(unittest.TestCase):
     """Test API ping operation from CLI
     """
@@ -66,7 +71,7 @@ class CliIntegrationTestsPing(unittest.TestCase):
         self.assertEqual(output['status'], 'SUCCESS')
         self.assertEqual(len(ip_add.split('.')), 4)
 
-
+@unittest.skipUnless(TEST_CLI_PRICING, 'PYRK_TEST_CLI_PRICING env not set, skipping')
 class PricingCliIntegrationTests(unittest.TestCase):
     """Test pricing API from CLI
     """
@@ -85,7 +90,7 @@ class PricingCliIntegrationTests(unittest.TestCase):
         self.assertIn('org', price_data.keys())
 
 
-@unittest.skipUnless(TEST_SSL, 'PYRK_TEST_SSL env not set, skipping')
+@unittest.skipUnless(TEST_CLI_SSL, 'PYRK_TEST_CLI_SSL env not set, skipping')
 class SslCliIntegrationTests(unittest.TestCase):
     """Test SSL API via CLI
     WARNING: This test suite will retirieve private certificate data for your domain
@@ -113,7 +118,7 @@ class SslCliIntegrationTests(unittest.TestCase):
         self.assertEqual(cert_public, '-----BEGIN PUBLIC KEY-----')
 
 
-@unittest.skipUnless(TEST_DNS_RETRIEVE, 'PYRK_TEST_DNS_RETRIEVE env not set, skipping')
+@unittest.skipUnless(TEST_CLI_DNS_RETRIEVE, 'PYRK_TEST_CLI_DNS_RETRIEVE env not set, skipping')
 class DnsGetCliIntegrationTests(unittest.TestCase):
     """Test DNS Get, Create, Edit, Delete
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -225,7 +230,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
             self.assertEqual(test_record['type'], target_record['type'])
 
 
-@unittest.skipUnless(TEST_DNS_CREATE, 'PYRK_TEST_DNS_CREATE env not set, skipping')
+@unittest.skipUnless(TEST_CLI_DNS_CREATE, 'PYRK_TEST_CLI_DNS_CREATE env not set, skipping')
 class DnsCreateIntegrationTests(unittest.TestCase):
     """Test DNS API for record creation
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -483,7 +488,7 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         self.assertIn(str(output['id']), self.created_record_ids)
 
 
-@unittest.skipUnless(TEST_DNS_DELETE, 'PYRK_TEST_DNS_DELETE env not set, skipping')
+@unittest.skipUnless(TEST_CLI_DNS_DELETE, 'PYRK_TEST_CLI_DNS_DELETE env not set, skipping')
 class DnsDeleteIntegrationTests(unittest.TestCase):
     """Test DNS API for record deletion
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -548,7 +553,7 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
         self.assertListEqual(check, [])
 
 
-@unittest.skipUnless(TEST_DNS_MODIFY, 'PYRK_TEST_DNS_MODIFY env not set, skipping')
+@unittest.skipUnless(TEST_CLI_DNS_MODIFY, 'PYRK_TEST_CLI_DNS_MODIFY env not set, skipping')
 class DnsModifyIntegrationTests(unittest.TestCase):
     """Test DNS API for record modification
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -619,7 +624,7 @@ class DnsModifyIntegrationTests(unittest.TestCase):
         self.assertEqual('700', check.ttl)
 
 
-@unittest.skipUnless(TEST_DNS_BULK, 'PYRK_TEST_DNS_BULK env not set, skipping')
+@unittest.skipUnless(TEST_CLI_DNS_BULK, 'PYRK_TEST_CLI_DNS_BULK env not set, skipping')
 class DnsBulkCliIntegrationTests(unittest.TestCase):
     """Test DNS Get, Create, Edit, Delete
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
