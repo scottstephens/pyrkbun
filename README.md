@@ -380,7 +380,7 @@ NOTE: If you attempt to update a record with no changes the API will return an e
 By default, pyrkbun will exclude NS records from any bulk operations. If you would like to include these records you can set the '-incns' flag. 
 Example usage:
 ```
-% pyrkbun dns example.com bulk ./records.json ./result.json -mode merge
+% pyrkbun dns example.com bulk ./records.json ./result.json -mode merge -incns
 ```
 ## pyrkbun cli ping
 Porkbun provides a simple API endpoint for polling the API and returning your current IP address.

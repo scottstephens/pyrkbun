@@ -5,6 +5,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 from os import getenv, path
+from httpx import ReadTimeout
 
 try:
     from dotenv import load_dotenv
@@ -13,7 +14,7 @@ except ModuleNotFoundError:
     pass
 
 import pyrkbun
-from pyrkbun import ApiError
+from pyrkbun import ApiError, ApiFailure
 
 # These constants enable you to customise which test suites to run
 # Set applicable environment variables to control test suite execution
@@ -314,7 +315,10 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Clean-up test records created during testing
         """
         for record_id in cls.created_record_ids:
-            pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record_id)
+            try:
+                pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record_id)
+            except (ApiError, ApiFailure, ReadTimeout) as error:
+                print(error.message)
 
     def test_create_a_record(self):
         """Test creation of A record

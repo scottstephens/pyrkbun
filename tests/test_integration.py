@@ -5,6 +5,7 @@ ONLY RUN THESE TESTS AGAINST A DOMAIN THAT IS PREPARED FOR THESE CHANGES
 import unittest
 from unittest.mock import patch
 from os import getenv
+from httpx import ReadTimeout
 
 try:
     from dotenv import load_dotenv
@@ -13,7 +14,7 @@ except ModuleNotFoundError:
     pass
 
 import pyrkbun
-from pyrkbun import ApiError
+from pyrkbun import ApiError, ApiFailure
 
 
 # These constants enable you to customise which test suites to run
@@ -229,14 +230,14 @@ class DnsCreateIntegrationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Define test record data and store in cls attribute
         """
-        cls.test_data = {'A': {'name': 'pyrkbuntesta',
+        cls.test_data = {'A': {'name': 'pyrkbuncreatea',
                                'record_type': 'A',
                                'content': '198.51.100.45',
                                'ttl': '600',
                                'prio': '0',
                                'notes': 'pyrkbun test A record',
                                'domain': TEST_DOMAIN_NAME},
-                         'AAAA': {'name': 'pyrkbuntestaaaa',
+                         'AAAA': {'name': 'pyrkbuncreateaaaa',
                                   'record_type': 'AAAA',
                                   'content': '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
                                   'ttl': '600',
@@ -245,19 +246,19 @@ class DnsCreateIntegrationTests(unittest.TestCase):
                                   'domain': TEST_DOMAIN_NAME},
                          'MX': {'name': '',
                                 'record_type': 'MX',
-                                'content': f'pyrkbuntestmx.{TEST_DOMAIN_NAME}',
+                                'content': 'pyrkbuncreatemx.example.com',
                                 'ttl': '600',
                                 'prio': '65534',
                                 'notes': 'pyrkbun test MX record',
                                 'domain': TEST_DOMAIN_NAME},
-                         'CNAME': {'name': 'pyrkbuntestcname',
+                         'CNAME': {'name': 'pyrkbuncreatecname',
                                    'record_type': 'CNAME',
                                    'content': 'www.example.com',
                                    'ttl': '600',
                                    'prio': '0',
                                    'notes': 'pyrkbun test CNAME record',
                                    'domain': TEST_DOMAIN_NAME},
-                         'ALIAS': {'name': 'pyrkbuntestalias',
+                         'ALIAS': {'name': 'pyrkbuncreatealias',
                                    'record_type': 'ALIAS',
                                    'content': 'www.example.org',
                                    'ttl': '600',
@@ -266,25 +267,25 @@ class DnsCreateIntegrationTests(unittest.TestCase):
                                    'domain': TEST_DOMAIN_NAME},
                          'TXT': {'name': '',
                                  'record_type': 'TXT',
-                                 'content': 'txt api record test',
+                                 'content': 'txt api create record test',
                                  'ttl': '600',
                                  'prio': '0',
                                  'notes': 'pyrkbun test TXT record',
                                  'domain': TEST_DOMAIN_NAME},
-                         'NS': {'name': f'pyrkbuntestsubdomain.{TEST_DOMAIN_NAME}',
+                         'NS': {'name': f'pyrkbuncreatesubdomain.{TEST_DOMAIN_NAME}',
                                 'record_type': 'NS',
-                                'content': f'pyrkbuntestns.{TEST_DOMAIN_NAME}',
+                                'content': f'pyrkbuncreatens.{TEST_DOMAIN_NAME}',
                                 'ttl': '600',
                                 'prio': '0',
                                 'notes': 'pyrkbun test NS record',
                                 'domain': TEST_DOMAIN_NAME},
                          'SRV': {'name': '_pyrk._bun',
                                  'record_type': 'SRV',
-                                 'content': f'65533 65532 pyrkbuntestsrv.{TEST_DOMAIN_NAME}',
+                                 'content': f'65533 65532 pyrkbuncreatesrv.{TEST_DOMAIN_NAME}',
                                  'prio': '65533',
                                  'notes': 'pyrkbun test SRV record',
                                  'domain': TEST_DOMAIN_NAME},
-                         'TLSA': {'name': '_443._tcp.pyrkbuntest',
+                         'TLSA': {'name': '_443._tcp.pyrkbuncreate',
                                   'record_type': 'TLSA',
                                   'content': '0 0 0 123456789abcdef123456789abcdef',
                                   'ttl': '600',
@@ -293,7 +294,7 @@ class DnsCreateIntegrationTests(unittest.TestCase):
                                   'domain': TEST_DOMAIN_NAME},
                          'CAA': {'name': '',
                                  'record_type': 'CAA',
-                                 'content': f'0 issue "pyrkbuntest.{TEST_DOMAIN_NAME}"',
+                                 'content': f'0 issue "pyrkbuncreate.{TEST_DOMAIN_NAME}"',
                                  'ttl': '600',
                                  'prio': '0',
                                  'notes': 'pyrkbun test CAA record',
@@ -306,8 +307,11 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         """Clean-up test records created during testing
         """
         for record_id in cls.created_record_ids:
-            pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record_id)
-
+            try:
+                pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record_id)
+            except (ApiError, ApiFailure, ReadTimeout) as error:
+                print(error.message)
+                
     def test_create_a_record(self):
         """Test creation of A record
         """
