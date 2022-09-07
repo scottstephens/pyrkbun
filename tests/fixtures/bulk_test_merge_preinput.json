@@ -1,6 +1,6 @@
 [
     {
-        "name": "pyrkbuntestaadd",
+        "name": "pyrkclitestaadd",
         "type": "A",
         "content": "198.51.100.55",
         "ttl": "600",
@@ -8,7 +8,7 @@
         "notes": "pyrkbun test A record"
     },
     {
-        "name": "pyrkbuntesta",
+        "name": "pyrkclitesta",
         "type": "A",
         "content": "198.51.100.101",
         "ttl": "600",
@@ -16,7 +16,7 @@
         "notes": "pyrkbun test A record"
     },
     {
-        "name": "pyrkbuntestaaaa",
+        "name": "pyrkclitestaaaa",
         "type": "AAAA",
         "content": "2001:0db8:85a3:0000:0000:8a2e:0370:abcd",
         "ttl": "700",

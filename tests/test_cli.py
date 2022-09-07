@@ -122,13 +122,13 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Setup test records
         """
-        test_records = [{'name': 'pyrkbuntesta',
+        test_records = [{'name': 'pyrkclitesta',
                          'type': 'A',
                          'content': '198.51.100.45',
                          'ttl': '600',
                          'prio': '0',
                          'notes': 'pyrkbun test A record'},
-                        {'name': 'pyrkbuntestaaaa',
+                        {'name': 'pyrkclitestaaaa',
                          'type': 'AAAA',
                          'content': '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
                          'ttl': '600',
@@ -136,13 +136,13 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
                          'notes': 'pyrkbun test AAAA record'},
                         {'name': '',
                          'type': 'MX',
-                         'content': f'pyrkbuntesta.{TEST_DOMAIN_NAME}',
+                         'content': 'pyrkclitesta.example.com',
                          'ttl': '600',
                          'prio': '65534',
                          'notes': 'pyrkbun test MX record 1'},
                         {'name': '',
                          'type': 'MX',
-                         'content': f'pyrkbuntestaaaa.{TEST_DOMAIN_NAME}',
+                         'content': 'pyrkclitestaaaa.example.com',
                          'ttl': '600',
                          'prio': '65533',
                          'notes': 'pyrkbun test MX record 2'}]
@@ -169,11 +169,11 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
         aaaa_count = 0
         mx_count = 0
         for record in dns_records:
-            if record['type'] == 'A' and record['name'] == 'pyrkbuntesta':
+            if record['type'] == 'A' and record['name'] == 'pyrkclitesta':
                 a_count += 1
-            elif record['type'] == 'AAAA' and record['name'] == 'pyrkbuntestaaaa':
+            elif record['type'] == 'AAAA' and record['name'] == 'pyrkclitestaaaa':
                 aaaa_count += 1
-            elif record['type'] == 'MX' and record['content'][0:11] == 'pyrkbuntest':
+            elif record['type'] == 'MX' and record['content'][0:11] == 'pyrkclitest':
                 mx_count += 1
         self.assertEqual(a_count, 1)
         self.assertEqual(aaaa_count, 1)
@@ -185,7 +185,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
         command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'get', '-type', 'MX']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         dns_records = json.loads(result.stdout)
-        dns_records = [record for record in dns_records if record['content'][0:11] == 'pyrkbuntest'] #pylint: disable=line-too-long
+        dns_records = [record for record in dns_records if record['content'][0:11] == 'pyrkclitest'] #pylint: disable=line-too-long
         self.assertEqual(len(dns_records), 2)
         for record in dns_records:
             self.assertIn('id', record.keys())
@@ -200,7 +200,7 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
         """Test retrival by type and name using cli
         """
         command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME,
-                   'get', '-type', 'A', '-name', 'pyrkbuntesta']
+                   'get', '-type', 'A', '-name', 'pyrkclitesta']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         dns_records = json.loads(result.stdout)
         target_record = dns_records[0]
@@ -236,14 +236,14 @@ class DnsCreateIntegrationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Define test record data and store in cls attribute
         """
-        cls.test_data = {'A': {'name': 'pyrkbuntesta',
+        cls.test_data = {'A': {'name': 'pyrkclitesta',
                                'record_type': 'A',
                                'content': '198.51.100.45',
                                'ttl': '600',
                                'prio': '0',
                                'notes': 'pyrkbun test A record',
                                'domain': TEST_DOMAIN_NAME},
-                         'AAAA': {'name': 'pyrkbuntestaaaa',
+                         'AAAA': {'name': 'pyrkclitestaaaa',
                                   'record_type': 'AAAA',
                                   'content': '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
                                   'ttl': '600',
@@ -252,19 +252,19 @@ class DnsCreateIntegrationTests(unittest.TestCase):
                                   'domain': TEST_DOMAIN_NAME},
                          'MX': {'name': '',
                                 'record_type': 'MX',
-                                'content': f'pyrkbuntestmx.{TEST_DOMAIN_NAME}',
+                                'content': f'pyrkclitestmx.{TEST_DOMAIN_NAME}',
                                 'ttl': '600',
                                 'prio': '65534',
                                 'notes': 'pyrkbun test MX record',
                                 'domain': TEST_DOMAIN_NAME},
-                         'CNAME': {'name': 'pyrkbuntestcname',
+                         'CNAME': {'name': 'pyrkclitestcname',
                                    'record_type': 'CNAME',
                                    'content': 'www.example.com',
                                    'ttl': '600',
                                    'prio': '0',
                                    'notes': 'pyrkbun test CNAME record',
                                    'domain': TEST_DOMAIN_NAME},
-                         'ALIAS': {'name': 'pyrkbuntestalias',
+                         'ALIAS': {'name': 'pyrkclitestalias',
                                    'record_type': 'ALIAS',
                                    'content': 'www.example.org',
                                    'ttl': '600',
@@ -278,20 +278,20 @@ class DnsCreateIntegrationTests(unittest.TestCase):
                                  'prio': '0',
                                  'notes': 'pyrkbun test TXT record',
                                  'domain': TEST_DOMAIN_NAME},
-                         'NS': {'name': f'pyrkbuntestsubdomain.{TEST_DOMAIN_NAME}',
+                         'NS': {'name': f'pyrkclitestsubdomain.{TEST_DOMAIN_NAME}',
                                 'record_type': 'NS',
-                                'content': f'pyrkbuntestns.{TEST_DOMAIN_NAME}',
+                                'content': f'pyrkclitestns.{TEST_DOMAIN_NAME}',
                                 'ttl': '600',
                                 'prio': '0',
                                 'notes': 'pyrkbun test NS record',
                                 'domain': TEST_DOMAIN_NAME},
-                         'SRV': {'name': '_pyrk._bun',
+                         'SRV': {'name': '_pyrk._cli',
                                  'record_type': 'SRV',
-                                 'content': f'65533 65532 pyrkbuntestsrv.{TEST_DOMAIN_NAME}',
+                                 'content': f'65533 65532 pyrkclitestsrv.{TEST_DOMAIN_NAME}',
                                  'prio': '65533',
                                  'notes': 'pyrkbun test SRV record',
                                  'domain': TEST_DOMAIN_NAME},
-                         'TLSA': {'name': '_443._tcp.pyrkbuntest',
+                         'TLSA': {'name': '_443._tcp.pyrkclitest',
                                   'record_type': 'TLSA',
                                   'content': '0 0 0 123456789abcdef123456789abcdef',
                                   'ttl': '600',
@@ -300,7 +300,7 @@ class DnsCreateIntegrationTests(unittest.TestCase):
                                   'domain': TEST_DOMAIN_NAME},
                          'CAA': {'name': '',
                                  'record_type': 'CAA',
-                                 'content': f'0 issue "pyrkbuntest.{TEST_DOMAIN_NAME}"',
+                                 'content': f'0 issue "pyrkclitest.{TEST_DOMAIN_NAME}"',
                                  'ttl': '600',
                                  'prio': '0',
                                  'notes': 'pyrkbun test CAA record',
@@ -489,13 +489,13 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Setup test records
         """
-        test_records = [{'name': 'pyrkbuntesta',
+        test_records = [{'name': 'pyrkclitesta',
                          'type': 'A',
                          'content': '198.51.100.45',
                          'ttl': '600',
                          'prio': '0',
                          'notes': 'pyrkbun test A record'},
-                        {'name': 'pyrkbuntestaaaa',
+                        {'name': 'pyrkclitestaaaa',
                          'type': 'AAAA',
                          'content': '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
                          'ttl': '600',
@@ -554,13 +554,13 @@ class DnsModifyIntegrationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Create test records
         """
-        test_records = [{'name': 'pyrkbuntesta',
+        test_records = [{'name': 'pyrkclitesta',
                          'type': 'A',
                          'content': '198.51.100.45',
                          'ttl': '600',
                          'prio': '0',
                          'notes': 'pyrkbun test A record'},
-                        {'name': 'pyrkbuntestaaaa',
+                        {'name': 'pyrkclitestaaaa',
                          'type': 'AAAA',
                          'content': '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
                          'ttl': '600',
@@ -588,13 +588,13 @@ class DnsModifyIntegrationTests(unittest.TestCase):
         """
         record = [record for record in self.test_records if record['type'] == 'A'][0]
         command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'edit',
-                   '-id', record['id'], '-name', 'pyrkbuntestaedit', '-ttl', '680',
+                   '-id', record['id'], '-name', 'pyrkclitestaedit', '-ttl', '680',
                    '-content', '198.51.100.55', '-type', 'A']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
         check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME, record_id = record['id'])[0]
         self.assertEqual('SUCCESS', output['status'])
-        self.assertEqual('pyrkbuntestaedit', check.name)
+        self.assertEqual('pyrkclitestaedit', check.name)
         self.assertEqual('198.51.100.55', check.content)
         self.assertEqual('680', check.ttl)
 
@@ -603,13 +603,13 @@ class DnsModifyIntegrationTests(unittest.TestCase):
         """
         record = [record for record in self.test_records if record['type'] == 'AAAA'][0]
         command = ['python', '-m', PYRK_CLI, 'dns', TEST_DOMAIN_NAME, 'edit',
-                   '-id', record['id'], '-name', 'pyrkbuntestaaaa', '-ttl', '700',
+                   '-id', record['id'], '-name', 'pyrkclitestaaaa', '-ttl', '700',
                    '-content', '2001:0db8:85a3:0000:0000:8a2e:0370:adef', '-type', 'AAAA']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
         check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME, record_id = record['id'])[0]
         self.assertEqual('SUCCESS', output['status'])
-        self.assertEqual('pyrkbuntestaaaa', check.name)
+        self.assertEqual('pyrkclitestaaaa', check.name)
         self.assertEqual('2001:0db8:85a3:0000:0000:8a2e:0370:adef', check.content)
         self.assertEqual('700', check.ttl)
 
@@ -645,13 +645,13 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
         """Setup test records
         """
-        test_records = [{'name': 'pyrkbuntesta',
+        test_records = [{'name': 'pyrkclitesta',
                          'type': 'A',
                          'content': '198.51.100.45',
                          'ttl': '600',
                          'prio': '0',
                          'notes': 'pyrkbun test A record'},
-                        {'name': 'pyrkbuntestaaaa',
+                        {'name': 'pyrkclitestaaaa',
                          'type': 'AAAA',
                          'content': '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
                          'ttl': '600',
@@ -659,7 +659,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                          'notes': 'pyrkbun test AAAA record'},
                         {'name': '',
                          'type': 'MX',
-                         'content': 'pyrkbuntestaaaa.example.com',
+                         'content': 'pyrkclitestaaaa.example.com',
                          'ttl': '600',
                          'prio': '65533',
                          'notes': 'pyrkbun test MX record 1'}]
@@ -698,7 +698,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
         self.assertEqual(len(check), 2)
         self.assertEqual(len(output['DELETED']['SUCCESS']), 3)
         for record in check:
-            self.assertIn(record.content, ('198.51.100.55', 'pyrkbuntestaflush.example.com'))
+            self.assertIn(record.content, ('198.51.100.55', 'pyrkclitestaflush.example.com'))
             self.assertIn(record.record_type, ('A', 'MX'))
             self.assertIsNotNone(record.record_id)
 
@@ -723,7 +723,7 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
         self.assertEqual(len(output), 2)
         self.assertEqual(len(check), 5)
         for record in output:
-            self.assertIn(record['content'], ('198.51.100.55', 'pyrkbuntestaadd.example.com'))
+            self.assertIn(record['content'], ('198.51.100.55', 'pyrkclitestaadd.example.com'))
             self.assertIn(record['type'], ('A', 'MX'))
             self.assertIn('id', record.keys())
 
@@ -767,12 +767,13 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                 self.assertIn(record.content,
                               ('198.51.100.101', '2001:0db8:85a3:0000:0000:8a2e:0370:abcd'))
                 self.assertIn(record.record_type, ('A', 'AAAA'))
-                self.assertIn(record.name, ('pyrkbuntesta', 'pyrkbuntestaaaa'))
+                self.assertIn(record.name, ('pyrkclitesta', 'pyrkclitestaaaa'))
 
             elif record.record_id == created[0]['id']:
-                self.assertEqual(record.name, 'pyrkbuntestaadd')
+                self.assertEqual(record.name, 'pyrkclitestaadd')
         self.assertTrue(path.exists('./tests/fixtures/bulk_test_merge_output.json'))
         self.assertEqual(len(created), 1)
+
 
 if __name__ == 'main':
     unittest.main()
