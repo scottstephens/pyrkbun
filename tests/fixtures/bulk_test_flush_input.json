@@ -1,6 +1,6 @@
 [
     {
-        "name": "pyrkclitestaflush",
+        "name": "pyrkclibulkaflush",
         "type": "A",
         "content": "198.51.100.55",
         "ttl": "600",
@@ -10,7 +10,7 @@
     {
         "name": "",
         "type": "MX",
-        "content": "pyrkclitestaflush.example.com",
+        "content": "pyrkclibulkaflush.example.com",
         "ttl": "600",
         "prio": "65534",
         "notes": "pyrkbun test MX record 1"

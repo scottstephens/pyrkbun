@@ -1,6 +1,6 @@
 [
     {
-        "name": "pyrkclitestaadd",
+        "name": "pyrkclibulkaadd",
         "type": "A",
         "content": "198.51.100.55",
         "ttl": "600",
@@ -10,7 +10,7 @@
     {
         "name": "",
         "type": "MX",
-        "content": "pyrkclitestaadd.example.com",
+        "content": "pyrkclibulkaadd.example.com",
         "ttl": "600",
         "prio": "65534",
         "notes": "pyrkbun test MX record 2"
