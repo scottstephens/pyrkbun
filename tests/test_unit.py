@@ -13,7 +13,7 @@ import pyrkbun
 
 TEST_UNIT: str = getenv('PYRK_TEST_UNIT')
 
-@unittest.skipUnless(TEST_UNIT, 'PYRK_TEST_UNTI env not set, skipping')
+@unittest.skipUnless(TEST_UNIT, 'PYRK_TEST_UNIT env not set, skipping')
 class DnsUnitTests(unittest.TestCase):
     """Unit tests on DNS class intialisation and updates
     """

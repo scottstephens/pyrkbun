@@ -27,7 +27,7 @@ FORCE_V4: str = getenv('PYRK_FORCE_V4')
 RATE_LIMIT: float = float(getenv('PYRK_RATE')) if getenv('PYRK_RATE') else 0
 RETRIES: int = int(getenv('PYRK_RETRIES')) if getenv('PYRK_RETRIES') else 0
 
-BASE_URL_V64: str = 'https://porkbun.com/api/json/v3'
+BASE_URL_V64: str = 'https://api.porkbun.com/api/json/v3'
 BASE_URL_V4: str = 'https://api-ipv4.porkbun.com/api/json/v3'
 BASE_URL: str = BASE_URL_V4 if FORCE_V4 else BASE_URL_V64
 
@@ -48,7 +48,7 @@ class ApiError(Exception):
     Attributes:
         http_status: HTTP status code returned from API
         status: Status message returned from API. Should always be 'Error'
-        message: Error message returned from API explaing the error cause.
+        message: Error message returned from API explains the error cause.
     """
 
     def __init__(self, http_status, status, message):
