@@ -44,7 +44,7 @@ jobs:
         PYRK_TEST_DNS_CREATE: 'True'
         PYRK_TEST_DNS_DELETE: 'True'
         PYRK_TEST_DNS_MODIFY: 'True'
-        PYRK_RATE: '10'
+        PYRK_RATE: '20'
         PYRK_RETRIES: '4'
         PYTHONPATH: ${{ github.workspace }}
       run: |
@@ -61,7 +61,7 @@ jobs:
         PYRK_TEST_CLI_DNS_CREATE: 'True'
         PYRK_TEST_CLI_DNS_DELETE: 'True'
         PYRK_TEST_CLI_DNS_MODIFY: 'True'
-        PYRK_RATE: '10'
+        PYRK_RATE: '20'
         PYRK_RETRIES: '4'
         PYTHONPATH: ${{ github.workspace }}
       run: |
@@ -72,7 +72,7 @@ jobs:
         PYRK_API_SECRET_KEY: ${{ secrets.PYRK_API_SECRET_KEY }}
         PYRK_TEST_DOMAIN_NAME: ${{ secrets.PYRK_TEST_DOMAIN_NAME }}
         PYRK_TEST_CLI_DNS_BULK: 'True'
-        PYRK_RATE: '10'
+        PYRK_RATE: '20'
         PYRK_RETRIES: '4'
         PYTHONPATH: ${{ github.workspace }}
       run: |
