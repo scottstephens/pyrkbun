@@ -5,7 +5,7 @@ import httpx
 
 from .const import ApiError, ApiFailure
 from .const import API_KEY, API_SECRET_KEY, BASE_URL, BASE_URL_V4, VALID_HTTP_RESPONSE, RATE_LIMIT
-from .const import RETRIES
+from .const import RETRIES, TIMEOUT, HTTP2
 
 def api_post(path: str,
              payload: dict = None,
@@ -37,7 +37,7 @@ def api_post(path: str,
         payload.update({'secretapikey': API_SECRET_KEY,'apikey': API_KEY})
     transport = httpx.HTTPTransport(retries=retries)
     headers = {'content-type': 'application/json'}
-    http_client = httpx.Client(http2=False, base_url=base_url, headers=headers, transport=transport, timeout=15.0)
+    http_client = httpx.Client(http2=HTTP2, base_url=base_url, headers=headers, transport=transport, timeout=TIMEOUT)
     with http_client as client:
         time.sleep(RATE_LIMIT)
         response = client.post(path, json=payload)

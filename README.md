@@ -81,6 +81,14 @@ If you would like pyrkbun to manage retries of API calls for you, simply set the
 ```
 export PYRK_RETRIES=3
 ```
+The default timeout for requests is set to 10 seconds. If you wish to override this value set an environment variable as a float in seconds.
+```
+export PYRK_TIMEOUT=5.0
+```
+The underlying http framework used is httpx. Originally the utility was hard set to utilise http/2 by default, however i have found this to be unreliable. The default is now http/1.1, however you can re-enable http/2 with the following environment variable.
+```
+export PYRK_HTTP2
+```
 # Using pyrkbun in your python project
 pyrkbun exposes all of the porkbun.com api functionality through a set of functions and classes. Functionality is grouped into sub-modules as follows:
  - **pyrkbun.ssl:** Operations related to certificate management.  Exposes a single function to reirieve certifcate bundle.

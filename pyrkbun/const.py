@@ -26,6 +26,8 @@ API_SECRET_KEY: str = getenv('PYRK_API_SECRET_KEY')
 FORCE_V4: str = getenv('PYRK_FORCE_V4')
 RATE_LIMIT: float = float(getenv('PYRK_RATE')) if getenv('PYRK_RATE') else 0
 RETRIES: int = int(getenv('PYRK_RETRIES')) if getenv('PYRK_RETRIES') else 0
+TIMEOUT: int = int(getenv('PYRK_TIMEOUT')) if getenv('PYRK_TIMEOUT') else 10
+HTTP2: int = int(getenv('PYRK_HTTP2')) if getenv('PYRK_HTTP2') else False
 
 BASE_URL_V64: str = 'https://api.porkbun.com/api/json/v3'
 BASE_URL_V4: str = 'https://api-ipv4.porkbun.com/api/json/v3'

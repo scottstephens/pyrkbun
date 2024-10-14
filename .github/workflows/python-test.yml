@@ -44,8 +44,8 @@ jobs:
         PYRK_TEST_DNS_CREATE: 'True'
         PYRK_TEST_DNS_DELETE: 'True'
         PYRK_TEST_DNS_MODIFY: 'True'
-        PYRK_RATE: '15'
-        PYRK_RETRIES: '4'
+        PYRK_RATE: '5'
+        PYRK_RETRIES: '3'
         PYTHONPATH: ${{ github.workspace }}
       run: |
           python3 -m unittest discover ./tests "test_integration.py" -v
@@ -61,8 +61,8 @@ jobs:
         PYRK_TEST_CLI_DNS_CREATE: 'True'
         PYRK_TEST_CLI_DNS_DELETE: 'True'
         PYRK_TEST_CLI_DNS_MODIFY: 'True'
-        PYRK_RATE: '15'
-        PYRK_RETRIES: '4'
+        PYRK_RATE: '5'
+        PYRK_RETRIES: '3'
         PYTHONPATH: ${{ github.workspace }}
       run: |
           python3 -m unittest discover ./tests "test_cli.py" -v
@@ -72,8 +72,8 @@ jobs:
         PYRK_API_SECRET_KEY: ${{ secrets.PYRK_API_SECRET_KEY }}
         PYRK_TEST_DOMAIN_NAME: ${{ secrets.PYRK_TEST_DOMAIN_NAME }}
         PYRK_TEST_CLI_DNS_BULK: 'True'
-        PYRK_RATE: '15'
-        PYRK_RETRIES: '4'
+        PYRK_RATE: '5'
+        PYRK_RETRIES: '3'
         PYTHONPATH: ${{ github.workspace }}
       run: |
           python3 -m unittest discover ./tests "test_cli.py" -v
