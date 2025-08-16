@@ -21,13 +21,13 @@ except ModuleNotFoundError:
 
 VALID_HTTP_RESPONSE: set = {200}
 
-API_KEY: str = getenv('PYRK_API_KEY')
-API_SECRET_KEY: str = getenv('PYRK_API_SECRET_KEY')
-FORCE_V4: str = getenv('PYRK_FORCE_V4')
-RATE_LIMIT: float = float(getenv('PYRK_RATE')) if getenv('PYRK_RATE') else 0
-RETRIES: int = int(getenv('PYRK_RETRIES')) if getenv('PYRK_RETRIES') else 0
-TIMEOUT: int = int(getenv('PYRK_TIMEOUT')) if getenv('PYRK_TIMEOUT') else 15
-HTTP2: int = int(getenv('PYRK_HTTP2')) if getenv('PYRK_HTTP2') else False
+API_KEY: str | None = getenv('PYRK_API_KEY')
+API_SECRET_KEY: str | None = getenv('PYRK_API_SECRET_KEY')
+FORCE_V4: str | None = getenv('PYRK_FORCE_V4')
+RATE_LIMIT: float = float(getenv('PYRK_RATE','0'))
+RETRIES: int = int(getenv('PYRK_RETRIES', '0'))
+TIMEOUT: int = int(getenv('PYRK_TIMEOUT', '15'))
+HTTP2: int = int(getenv('PYRK_HTTP2', '0'))
 
 BASE_URL_V64: str = 'https://api.porkbun.com/api/json/v3'
 BASE_URL_V4: str = 'https://api-ipv4.porkbun.com/api/json/v3'
