@@ -21,7 +21,12 @@ classifiers = [
 
 keywords = ["API", "Porkbun", "DNS", "Registrar"]
 
-dependencies = ["httpx[http2]", "colorama"]
+dependencies = [
+    "httpx[http2]",
+    "colorama",
+    "dacite",
+    "dotenv>=0.9.9",
+]
 requires-python = ">=3.9"
 
 [project.optional-dependencies]

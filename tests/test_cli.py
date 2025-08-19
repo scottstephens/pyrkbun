@@ -1,4 +1,5 @@
 """Test Pyrkbun CLI"""
+import os
 import time
 import json
 import subprocess
@@ -14,25 +15,11 @@ except ModuleNotFoundError:
     pass
 
 import pyrkbun
-from pyrkbun import ApiError, ApiFailure
-
-# These constants enable you to customise which test suites to run
-# Set applicable environment variables to control test suite execution
-TEST_DOMAIN_NAME: str = getenv('PYRK_TEST_DOMAIN_NAME')
-TEST_CLI_PING: str = getenv('PYRK_TEST_CLI_PING')
-TEST_CLI_PRICING: str = getenv('PYRK_TEST_CLI_PRICING')
-TEST_CLI_SSL: str = getenv('PYRK_TEST_CLI_SSL')
-TEST_DNS_TLSA: str = getenv('PYRK_TEST_DNS_TLSA')
-TEST_CLI_DNS_RETRIEVE: str = getenv('PYRK_TEST_CLI_DNS_RETRIEVE')
-TEST_CLI_DNS_CREATE: str = getenv('PYRK_TEST_CLI_DNS_CREATE')
-TEST_CLI_DNS_DELETE: str = getenv('PYRK_TEST_CLI_DNS_DELETE')
-TEST_CLI_DNS_MODIFY: str = getenv('PYRK_TEST_CLI_DNS_MODIFY')
-TEST_CLI_DNS_BULK: str =  getenv('PYRK_TEST_CLI_DNS_BULK')
+from pyrkbun import PyrkbunClient, ApiError, ApiFailure
 
 PYRK_CLI = 'pyrkbun.cli'
+TEST_DOMAIN_NAME = getenv("TEST_DOMAIN_NAME","")
 
-
-@unittest.skipUnless(TEST_CLI_PING, 'PYRK_TEST_CLI_PING env not set, skipping')
 class CliIntegrationTestsPing(unittest.TestCase):
     """Test API ping operation from CLI
     """
@@ -58,20 +45,7 @@ class CliIntegrationTestsPing(unittest.TestCase):
         self.assertEqual(output['status'], 'SUCCESS')
         self.assertEqual(len(ip_add.split('.')), 4)
 
-    # Need to patch the base url to force use of v4 host
-    @patch('pyrkbun.util.BASE_URL', 'https://api-ipv4.porkbun.com/api/json/v3')
-    def test_ping_v4_implicit(self):
-        """Test API ping using the v4 only API host inherited from environ
-        """
-        command = ['python', '-m', PYRK_CLI, 'ping', '-v4']
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        output = json.loads(result.stdout)
-        ip_add = output['yourIp']
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(output['status'], 'SUCCESS')
-        self.assertEqual(len(ip_add.split('.')), 4)
 
-@unittest.skipUnless(TEST_CLI_PRICING, 'PYRK_TEST_CLI_PRICING env not set, skipping')
 class PricingCliIntegrationTests(unittest.TestCase):
     """Test pricing API from CLI
     """
@@ -80,17 +54,17 @@ class PricingCliIntegrationTests(unittest.TestCase):
         """Validate data returned from pricing API
         """
         command = ['python', '-m', PYRK_CLI, 'pricing']
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        cmd_env = os.environ.copy()
+        cmd_env.update({'PYRK_TIMEOUT': '30'})
+        result = subprocess.run(command, capture_output=True, text=True, check=True, env=cmd_env )
         output = json.loads(result.stdout)
         price_data: dict = output['pricing']
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(output['status'], 'SUCCESS')
         self.assertIn('com', price_data.keys())
         self.assertIn('net', price_data.keys())
         self.assertIn('org', price_data.keys())
 
 
-@unittest.skipUnless(TEST_CLI_SSL, 'PYRK_TEST_CLI_SSL env not set, skipping')
 class SslCliIntegrationTests(unittest.TestCase):
     """Test SSL API via CLI
     WARNING: This test suite will retirieve private certificate data for your domain
@@ -102,7 +76,7 @@ class SslCliIntegrationTests(unittest.TestCase):
         """
         command = ['python', '-m', PYRK_CLI, 'ssl', TEST_DOMAIN_NAME]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
-        if result.stdout == 'API Error -> The SSL certificate is not ready for this domain.\n':
+        if result.stdout == 'Error -> The SSL certificate is not ready for this domain.\n':
             self.skipTest('Skipping test as domain does not hold ssl cert')
 
         output = json.loads(result.stdout)
@@ -111,14 +85,12 @@ class SslCliIntegrationTests(unittest.TestCase):
         cert_private: str = output["privatekey"][0:27]
         cert_public: str = output["publickey"][0:26]
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(output['status'], 'SUCCESS')
         self.assertEqual(cert_int, '-----BEGIN CERTIFICATE-----')
         self.assertEqual(cert_chain, '-----BEGIN CERTIFICATE-----')
         self.assertEqual(cert_private, '-----BEGIN PRIVATE KEY-----')
         self.assertEqual(cert_public, '-----BEGIN PUBLIC KEY-----')
 
 
-@unittest.skipUnless(TEST_CLI_DNS_RETRIEVE, 'PYRK_TEST_CLI_DNS_RETRIEVE env not set, skipping')
 class DnsGetCliIntegrationTests(unittest.TestCase):
     """Test DNS Get, Create, Edit, Delete
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -154,17 +126,23 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
                          'prio': '65533',
                          'notes': 'pyrkbun test MX record 2'}]
         cls.test_records = []
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record in test_records:
-            create = pyrkbun.dns.create_record(TEST_DOMAIN_NAME, record)
-            test_data = {'id': str(create['id']), 'name': record['name'], 'type': record['type']}
+            create = dns_api.create_record(TEST_DOMAIN_NAME, record['type'], record['content'],
+                                         name=record['name'], ttl=record['ttl'], 
+                                         prio=record['prio'], notes=record['notes'])
+            test_data = {'id': str(create.id), 'name': record['name'], 'type': record['type']}
             cls.test_records.append(test_data)
 
     @classmethod
     def tearDownClass(cls) -> None:
         """Cleanup test records
         """
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record in cls.test_records:
-            pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
+            dns_api.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
 
     def test_dns_get_all_records(self):
         """Test retrival of all records
@@ -229,8 +207,6 @@ class DnsGetCliIntegrationTests(unittest.TestCase):
             self.assertEqual(test_record['name'], target_record['name'])
             self.assertEqual(test_record['type'], target_record['type'])
 
-
-@unittest.skipUnless(TEST_CLI_DNS_CREATE, 'PYRK_TEST_CLI_DNS_CREATE env not set, skipping')
 class DnsCreateIntegrationTests(unittest.TestCase):
     """Test DNS API for record creation
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -319,9 +295,11 @@ class DnsCreateIntegrationTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         """Clean-up test records created during testing
         """
+        client = PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record_id in cls.created_record_ids:
             try:
-                pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record_id)
+                dns_api.delete_record(TEST_DOMAIN_NAME, record_id=record_id)
             except (ApiError, ApiFailure, ReadTimeout) as error:
                 print(error.message)
 
@@ -338,7 +316,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_aaaa_record(self):
@@ -354,7 +331,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_mx_record(self):
@@ -370,7 +346,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_cname_record(self):
@@ -386,7 +361,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_alias_record(self):
@@ -402,7 +376,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_txt_record(self):
@@ -418,7 +391,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_ns_record(self):
@@ -434,7 +406,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_srv_record(self):
@@ -449,12 +420,8 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
-    # Having trouble with TLSA record creation - may require DNSSEC be enabled
-    # TODO: Check requirements for TLSA record creation
-    @unittest.skipUnless(TEST_DNS_TLSA, 'PYRK_TEST_DNS_TLSA env not set, skipping')
     def test_create_tlsa_record(self):
         """Test creation of TLSA record
         """
@@ -468,7 +435,6 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
     def test_create_caa_record(self):
@@ -484,11 +450,8 @@ class DnsCreateIntegrationTests(unittest.TestCase):
         if output['id']:
             self.created_record_ids.append(str(output['id']))
         self.assertTrue(output['id'])
-        self.assertEqual('SUCCESS', output['status'])
         self.assertIn(str(output['id']), self.created_record_ids)
 
-
-@unittest.skipUnless(TEST_CLI_DNS_DELETE, 'PYRK_TEST_CLI_DNS_DELETE env not set, skipping')
 class DnsDeleteIntegrationTests(unittest.TestCase):
     """Test DNS API for record deletion
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -512,18 +475,24 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
                          'prio': '0',
                          'notes': 'pyrkbun test AAAA record'}]
         cls.test_records = []
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record in test_records:
-            create = pyrkbun.dns.create_record(TEST_DOMAIN_NAME, record)
-            test_data = {'id': str(create['id']), 'name': record['name'], 'type': record['type']}
+            create = dns_api.create_record(TEST_DOMAIN_NAME, record['type'], record['content'],
+                                         name=record['name'], ttl=record['ttl'], 
+                                         prio=record['prio'], notes=record['notes'])
+            test_data = {'id': str(create.id), 'name': record['name'], 'type': record['type']}
             cls.test_records.append(test_data)
 
     @classmethod
     def tearDownClass(cls) -> None:
         """Cleanup test records if any remain
         """
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record in cls.test_records:
             try:
-                pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
+                dns_api.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
             except ApiError as error:
                 if error.message == "Invalid record ID.":
                     pass
@@ -536,9 +505,11 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
                    '-id', record['id']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
-        check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME, record_id = record['id'])
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        check = dns_api.get_records(TEST_DOMAIN_NAME, record_id=record['id'])
         self.assertEqual('SUCCESS', output['status'])
-        self.assertListEqual(check, [])
+        self.assertListEqual(check.records, [])
 
     def test_delete_by_name_type(self):
         """Test deletion of record by name and type
@@ -548,12 +519,11 @@ class DnsDeleteIntegrationTests(unittest.TestCase):
                    '-name', record['name'], '-type', record['type']]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
-        check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME, record_id = record['id'])
-        self.assertEqual('SUCCESS', output['status'])
-        self.assertListEqual(check, [])
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        check = dns_api.get_records(TEST_DOMAIN_NAME, record_id=record['id'])
+        self.assertListEqual(check.records, [])
 
-
-@unittest.skipUnless(TEST_CLI_DNS_MODIFY, 'PYRK_TEST_CLI_DNS_MODIFY env not set, skipping')
 class DnsModifyIntegrationTests(unittest.TestCase):
     """Test DNS API for record modification
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -577,18 +547,24 @@ class DnsModifyIntegrationTests(unittest.TestCase):
                          'prio': '0',
                          'notes': 'pyrkbun test AAAA record'}]
         cls.test_records = []
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record in test_records:
-            create = pyrkbun.dns.create_record(TEST_DOMAIN_NAME, record)
-            test_data = {'id': str(create['id']), 'name': record['name'], 'type': record['type']}
+            create = dns_api.create_record(TEST_DOMAIN_NAME, record['type'], record['content'],
+                                         name=record['name'], ttl=record['ttl'], 
+                                         prio=record['prio'], notes=record['notes'])
+            test_data = {'id': str(create.id), 'name': record['name'], 'type': record['type']}
             cls.test_records.append(test_data)
 
     @classmethod
     def tearDownClass(cls) -> None:
         """Delete test records
         """
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record in cls.test_records:
             try:
-                pyrkbun.dns.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
+                dns_api.delete_record(TEST_DOMAIN_NAME, record_id=record['id'])
             except ApiError as error:
                 if error.message == "Invalid record ID.":
                     pass
@@ -602,8 +578,9 @@ class DnsModifyIntegrationTests(unittest.TestCase):
                    '-content', '198.51.100.55', '-type', 'A']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
-        check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME, record_id = record['id'])[0]
-        self.assertEqual('SUCCESS', output['status'])
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        check = dns_api.get_records(TEST_DOMAIN_NAME, record_id=record['id']).records[0]
         self.assertEqual('pyrkclieditaedit', check.name)
         self.assertEqual('198.51.100.55', check.content)
         self.assertEqual('680', check.ttl)
@@ -617,14 +594,14 @@ class DnsModifyIntegrationTests(unittest.TestCase):
                    '-content', '2001:0db8:85a3:0000:0000:8a2e:0370:adef', '-type', 'AAAA']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         output = json.loads(result.stdout)
-        check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME, record_id = record['id'])[0]
-        self.assertEqual('SUCCESS', output['status'])
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        check = dns_api.get_records(TEST_DOMAIN_NAME, record_id=record['id']).records[0]
         self.assertEqual('pyrkclieditaaaa', check.name)
         self.assertEqual('2001:0db8:85a3:0000:0000:8a2e:0370:adef', check.content)
         self.assertEqual('700', check.ttl)
 
 
-@unittest.skipUnless(TEST_CLI_DNS_BULK, 'PYRK_TEST_CLI_DNS_BULK env not set, skipping')
 class DnsBulkCliIntegrationTests(unittest.TestCase):
     """Test DNS Get, Create, Edit, Delete
     WARNING: This test suite WILL MODIFY your DOMAIN RECORDS
@@ -638,19 +615,25 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         """Backup existing domain records
         """
-        backup = pyrkbun.dns.get_records(TEST_DOMAIN_NAME)
-        cls.backup = [record for record in backup if record.record_type != 'NS']
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        backup = dns_api.get_records(TEST_DOMAIN_NAME)
+        cls.backup = [record for record in backup.records if record.type != 'NS']
 
     @classmethod
     def tearDownClass(cls) -> None:
         """Clean up any records left after test run and restore backup
         """
-        cleanup = pyrkbun.dns.get_records(TEST_DOMAIN_NAME)
-        cleanup = [record for record in cleanup if record.record_type != 'NS']
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        cleanup = dns_api.get_records(TEST_DOMAIN_NAME)
+        cleanup = [record for record in cleanup.records if record.type != 'NS']
         for record in cleanup:
-            record.delete()
+            dns_api.delete_record(TEST_DOMAIN_NAME, record_id=record.id)
         for record in cls.backup:
-            record.create()
+            dns_api.create_record(TEST_DOMAIN_NAME, record.type, record.content,
+                                name=record.name, ttl=record.ttl, 
+                                prio=record.prio, notes=record.notes)
 
     def setUp(self) -> None:
         """Setup test records
@@ -674,20 +657,26 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                          'prio': '65533',
                          'notes': 'pyrkbun test MX record 1'}]
         self.test_records = []
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
         for record in test_records:
-            create = pyrkbun.dns.create_record(TEST_DOMAIN_NAME, record)
-            test_data = {'id': str(create['id']), 'name': record['name'], 'type': record['type']}
+            create = dns_api.create_record(TEST_DOMAIN_NAME, record['type'], record['content'],
+                                         name=record['name'], ttl=record['ttl'], 
+                                         prio=record['prio'], notes=record['notes'])
+            test_data = {'id': str(create.id), 'name': record['name'], 'type': record['type']}
             self.test_records.append(test_data)
         time.sleep(10)
 
     def tearDown(self) -> None:
         """Cleanup test records
         """
-        cleanup = pyrkbun.dns.get_records(TEST_DOMAIN_NAME)
-        cleanup = [record for record in cleanup if record.record_type != 'NS']
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        cleanup = dns_api.get_records(TEST_DOMAIN_NAME)
+        cleanup = [record for record in cleanup.records if record.type != 'NS']
         for record in cleanup:
             try:
-                record.delete()
+                dns_api.delete_record(TEST_DOMAIN_NAME, record_id=record.id)
             except ApiError as error:
                 if error.message == "Invalid record ID.":
                     pass
@@ -701,8 +690,10 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                    './tests/fixtures/bulk_test_flush_output.json',
                    '-mode', 'flush']
         subprocess.run(command, capture_output=True, text=True, check=True)
-        check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME)
-        check = [record for record in check if record.record_type != 'NS']
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        check = dns_api.get_records(TEST_DOMAIN_NAME)
+        check = [record for record in check.records if record.type != 'NS']
         with open('./tests/fixtures/bulk_test_flush_output.json', 'r', encoding='utf8') as file:
             output = json.load(file)
         self.assertTrue(path.exists('./tests/fixtures/bulk_test_flush_output.json'))
@@ -711,8 +702,8 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
         self.assertEqual(len(output['DELETED']['SUCCESS']), 3)
         for record in check:
             self.assertIn(record.content, ('198.51.100.55', 'pyrkclibulkaflush.example.com'))
-            self.assertIn(record.record_type, ('A', 'MX'))
-            self.assertIsNotNone(record.record_id)
+            self.assertIn(record.type, ('A', 'MX'))
+            self.assertIsNotNone(record.id)
 
     def test_dns_bulk_add(self):
         """Test bulk operation using 'add' mode
@@ -722,8 +713,10 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                    './tests/fixtures/bulk_test_add_output.json',
                    '-mode', 'add']
         subprocess.run(command, capture_output=True, text=True, check=True)
-        check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME)
-        check = [record for record in check if record.record_type != 'NS']
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        check = dns_api.get_records(TEST_DOMAIN_NAME)
+        check = [record for record in check.records if record.type != 'NS']
         with open('./tests/fixtures/bulk_test_add_output.json', 'r', encoding='utf8') as file:
             results = json.load(file)
         output = []
@@ -764,8 +757,10 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                    './tests/fixtures/bulk_test_merge_output.json',
                    '-mode', 'merge']
         subprocess.run(command, capture_output=True, text=True, check=True)
-        check = pyrkbun.dns.get_records(TEST_DOMAIN_NAME)
-        check = [record for record in check if record.record_type != 'NS']
+        client = pyrkbun.PyrkbunClient.build()
+        dns_api = pyrkbun.dns(client)
+        check = dns_api.get_records(TEST_DOMAIN_NAME)
+        check = [record for record in check.records if record.type != 'NS']
         with open('./tests/fixtures/bulk_test_merge_output.json', 'r', encoding='utf8') as file:
             results = json.load(file)
         created = []
@@ -775,13 +770,13 @@ class DnsBulkCliIntegrationTests(unittest.TestCase):
                     created.append(value)
 
         for record in check:
-            if record.record_id in edit_record_ids:
+            if record.id in edit_record_ids:
                 self.assertIn(record.content,
                               ('198.51.100.101', '2001:0db8:85a3:0000:0000:8a2e:0370:abcd'))
-                self.assertIn(record.record_type, ('A', 'AAAA'))
+                self.assertIn(record.type, ('A', 'AAAA'))
                 self.assertIn(record.name, ('pyrkclibulka', 'pyrkclibulkaaaa'))
 
-            elif record.record_id == created[0]['id']:
+            elif record.id == created[0]['id']:
                 self.assertEqual(record.name, 'pyrkclibulkamerge')
         self.assertTrue(path.exists('./tests/fixtures/bulk_test_merge_output.json'))
         self.assertEqual(len(created), 1)

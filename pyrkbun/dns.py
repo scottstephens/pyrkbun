@@ -1,368 +1,322 @@
-"""Porkbun DNS API
+"""Porkbun DNS API - Command-based approach with PyrkbunClient
 """
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
+from typing import List, Optional
 from .const import SUPPORTED_DNS_RECORD_TYPES
-from .util import api_post
+from .client import PyrkbunClient
+
 
 @dataclass
-class Dns():
-    '''Class representing a DNS record
-
-    Args:
-    domain: Domain that hosts the record
-    name: Name of the record, excluding the domain
-    record_type: Type of DNS record to be created
-    content: Content of the record. For an A record this would be an IP
-    ttl: DNS Time-to-Live in seconds. Minimum value of 600 seconds
-    prio (optional): Record priority where supported. Defaults to '0'
-    notes (optional): Information note to be displayed in web GUI
-        defaults to empty string
-    record_id (optional): Porkbun DNS record ID, will be auto populated
-        when api is called for get, create and update operations
-        defaults to an empty string
-
-    Usage:
-    The class can be instantiated with record details and methods are
-    availabe to perfrom create, update and delete operations on the
-    record represnted by the class details.
-    Alternatively, a range of class methods are available to send API
-    commands without the need to first instantiate the class.
-
-    Example:
-    >>> x = pyrkbun.dns('example.com',
-                        'A',
-                        '198.51.100.45',
-                        'www',
-                        '620',
-                        '0',
-                        'Company website')
-    >>> x.create()
-    >>> x.refresh()
-    >>> x.delete()
-    '''
-
-    # Just the right number of instance attributes
-    # pylint: disable=too-many-instance-attributes
-    domain: str
-    record_type: str
+class DnsRecord:
+    """Represents a DNS record"""
+    id: str
+    name: str
+    type: str
     content: str
-    name: str = ''
-    ttl: str = '600'
-    prio: str = '0'
-    notes: str = ''
-    record_id: str = ''
+    ttl: Optional[str] = None
+    prio: Optional[str] = None
+    notes: Optional[str] = None
 
-    __api_path: str = field(default='/dns', init=False, repr=False)
 
-    def __setattr__(self, name, value):
-        if name == 'name':
-            value: str = '' if value == self.domain \
-                else value.removesuffix(f'.{self.domain}')
-        elif name == 'record_type':
-            assert value in SUPPORTED_DNS_RECORD_TYPES
-        elif name == 'notes':
-            # Porkbun are working on notes return, but now its returning null instead
-            # of an empty string. This check simply ensures type consistency for this field
-            value = '' if value is None else value
-        elif name == 'prio':
-            # For certain record types the API is returning null for priotiy instead of a value.
-            # Ensuring type consistency by setting null values to string value zero -> '0'.
-            value = '0' if value is None else value
-        elif name == 'record_id':
-            # When creating a record the ID value is returned as an int.
-            # Ensuring value is always stored as a string for type safety
-            value = str(value)
-        super().__setattr__(name, value)
+@dataclass  
+class DnsResponse:
+    """Response from DNS operations"""
+    records: List[DnsRecord]
 
-    @classmethod
-    def __cls_creator_formatter(cls, domain, api_response) -> list['Dns']:
-        """Format API response and create class instances
+
+class Dns:
+    """DNS API wrapper around PyrkbunClient
+    
+    Provides command-based methods for DNS operations.
+    """
+    
+    def __init__(self, client: PyrkbunClient):
+        """Initialize DNS wrapper with a PyrkbunClient
+        
+        Args:
+            client: PyrkbunClient instance for API calls
         """
-        records =[]
-        for record in api_response['records']:
-            # The PorkBun API is not returning 'notes' with records
-            # Checking for 'notes' in response keys and adding if needed
-            # Have raised issue with Porkbun support team
-            if 'notes' not in record.keys():
-                record['notes'] = ''
-            records.append(cls(domain,
-                               record['type'],
-                               record['content'],
-                               record['name'],
-                               record['ttl'],
-                               record['prio'],
-                               record['notes'],
-                               record['id']))
-        return records
+        self.client = client
+        self._api_path = '/dns'
+    
+    def _normalize_name(self, name: str, domain: str) -> str:
+        """Normalize DNS record name by removing domain suffix if present
+        
+        Args:
+            name: The record name (possibly FQDN)
+            domain: The domain being managed
+            
+        Returns:
+            The record name without domain suffix
+        """
+        if not name:
+            return ''
+        
+        # Remove trailing dot if present (FQDN format)
+        if name.endswith('.'):
+            name = name[:-1]
+            
+        # If name ends with the domain, remove the domain suffix
+        domain_suffix = f'.{domain}'
+        if name.endswith(domain_suffix):
+            return name[:-len(domain_suffix)]
+        
+        # If name is exactly the domain, return empty string (root record)
+        if name == domain:
+            return ''
+            
+        return name
 
-    @classmethod
-    def get_records(cls,
+    def get_records(self, 
                    domain: str,
-                   record_type: str = None,
-                   name: str = None,
-                   record_id: str = None) -> list['Dns']:
-        """Get specific DNS records by ID or type and name
-
-        Usage:
-        Either provide the record name and type (r_type),
-        or the record ID.
-
-        Example 1, Get by record name and type:
-        >>> x = pyrkbun.dns.get_record('example.com', 'A', 'www')
-        >>> print(x)
-        [Dns(domain='example.com', name='www', record_type='A',
-        content='198.51.100.45', ttl='650', prio='0', notes='',
-        record_id='253440859')]
-
-        Example 2, Get by record name and type where multiple entries exist:
-        >>> x = pyrkbun.dns.get_record('example.com', 'A', 'www')
-        >>> print(x)
-        [Dns(domain='example.com', name='www', record_type='A',
-        content='198.51.100.45', ttl='650', prio='0', notes='',
-        record_id='253440859'), Dns(domain='example.com', .... ]
-
-        Example 3, Get by record ID:
-        >>> x = pyrkbun.dns.get_record('example.com', record_id ='253440859')
-        >>> print(x)
-        [Dns(domain='example.com', name='www', record_type='A',
-        content='198.51.100.45', ttl='650', prio='0', notes='',
-        record_id='253440859')]
-
-        Example 4, Get all records:
-        >>> x = pyrkbun.dns.get_records('example.com')
-        >>> print(x)
-        [Dns(domain='example.com', name='www', record_type='A',
-        content='198.51.100.45', ttl='650', prio='0', notes='',
-        record_id='253440859'), Dns(domain='example.com', .... ]
-
-        Example 5, Get all MX records:
-        >>> x = pyrkbun.dns.get_records('example.com', 'MX')
-        >>> print(x)
-        [Dns(domain='example.com', name='example.com', record_type='MX',
-        content='mail.example.com', ttl='650', prio='10', notes='',
-        record_id='253440860'), Dns(domain='example.com', .... ]
+                   record_type: Optional[str] = None,
+                   name: Optional[str] = None,
+                   record_id: Optional[str] = None) -> DnsResponse:
+        """Get DNS records for a domain
+        
+        Args:
+            domain: Domain name
+            record_type: Type of DNS record (A, AAAA, MX, etc.)
+            name: Record name (subdomain)
+            record_id: Specific record ID
+            
+        Returns:
+            DnsResponse with list of DnsRecord objects
+            
+        Example:
+            >>> dns = Dns(client)
+            >>> response = dns.get_records('example.com', record_type='A')
+            >>> for record in response.records:
+            ...     print(f"{record.name}: {record.content}")
         """
-        if record_type:
-            assert record_type in SUPPORTED_DNS_RECORD_TYPES
+        if record_type and record_type not in SUPPORTED_DNS_RECORD_TYPES:
+            raise ValueError(f"Unsupported DNS record type: {record_type}")
 
-        if record_id or name:
-            path = f'{cls.__api_path}/retrieve/{domain}/{record_id}' if record_id \
-                else f'{cls.__api_path}/retrieveByNameType/{domain}/{record_type}/{name}'
+        # Build the appropriate API path based on provided parameters
+        if record_id:
+            path = f'{self._api_path}/retrieve/{domain}/{record_id}'
+        elif name:
+            path = f'{self._api_path}/retrieveByNameType/{domain}/{record_type}/{name}'
+        elif record_type:
+            path = f'{self._api_path}/retrieveByNameType/{domain}/{record_type}'
         else:
-            path = f'{cls.__api_path}/retrieveByNameType/{domain}/{record_type}' if record_type \
-                else f'{cls.__api_path}/retrieve/{domain}'
+            path = f'{self._api_path}/retrieve/{domain}'
 
-        response = api_post(path)
-        records = cls.__cls_creator_formatter(domain, response)
-        return records
+        response = self.client.api_post(path)
+        
+        # Check for successful response
+        if response.get('status') != 'SUCCESS':
+            status = response.get('status', 'UNKNOWN')
+            message = response.get('message', '')
+            error_msg = f"API request failed with status '{status}'"
+            if message:
+                error_msg += f": {message}"
+            raise RuntimeError(error_msg)
+        
+        # Convert API response to DnsRecord objects
+        records = []
+        for record_data in response['records']:
+            # Handle missing 'notes' field that API sometimes doesn't return
+            if 'notes' not in record_data:
+                record_data['notes'] = ''
+                
+            records.append(DnsRecord(
+                id=str(record_data['id']),
+                name=self._normalize_name(record_data['name'], domain),
+                type=record_data['type'],
+                content=record_data['content'],
+                ttl=record_data.get('ttl'),
+                prio=record_data.get('prio'),
+                notes=record_data.get('notes')
+            ))
+        
+        return DnsResponse(records=records)
 
-    @classmethod
-    def create_record(cls,
-                      domain: str,
-                      record: dict) -> dict:
+    def create_record(self,
+                     domain: str,
+                     record_type: str,
+                     content: str,
+                     name: Optional[str] = None,
+                     ttl: Optional[str] = None,
+                     prio: Optional[str] = None,
+                     notes: Optional[str] = None) -> DnsRecord:
         """Create a new DNS record
-
-        Usage:
-        Provide domain and a formatted dict containing record content
-
+        
+        Args:
+            domain: Domain name
+            record_type: Type of DNS record (required)
+            content: Record content (required - IP address, etc.)
+            name: Record name/subdomain (optional)
+            ttl: Time to live in seconds (optional)
+            prio: Priority for MX records (optional)
+            notes: Optional notes (optional)
+            
+        Returns:
+            DnsRecord object representing the created record
+            
         Example:
-        >>> record = {'name': 'www',
-                      'type': 'A',
-                      'content': '198.51.100.45',
-                      'ttl': '620',
-                      'prio': '0',
-                      'notes': 'Company website'}
-        >>> x = pyrkbun.dns.create_record('example.com', record)
-        >>> print(x)
-        {'status': 'SUCCESS', 'id': 253475380}
+            >>> dns = Dns(client)
+            >>> record = dns.create_record('example.com', 'A', '1.2.3.4', name='www')
         """
-        path = f'{cls.__api_path}/create/{domain}/'
-        response = api_post(path, record)
-        return response
+        if record_type not in SUPPORTED_DNS_RECORD_TYPES:
+            raise ValueError(f"Unsupported DNS record type: {record_type}")
+        
+        # Build payload with only provided values
+        payload = {
+            'type': record_type,
+            'content': content
+        }
+        
+        if name is not None:
+            payload['name'] = name
+        if ttl is not None:
+            payload['ttl'] = ttl
+        if prio is not None:
+            payload['prio'] = prio
+        if notes is not None:
+            payload['notes'] = notes
+        
+        path = f'{self._api_path}/create/{domain}'
+        response = self.client.api_post(path, payload)
+        
+        # Check for successful response
+        if response.get('status') != 'SUCCESS':
+            status = response.get('status', 'UNKNOWN')
+            message = response.get('message', '')
+            error_msg = f"API request failed with status '{status}'"
+            if message:
+                error_msg += f": {message}"
+            raise RuntimeError(error_msg)
+        
+        # Return a DnsRecord object with the created record info
+        return DnsRecord(
+            id=str(response['id']),
+            name=name or '',
+            type=record_type,
+            content=content,
+            ttl=ttl,
+            prio=prio,
+            notes=notes
+        )
 
-    @classmethod
-    def delete_record(cls,
-                      domain: str,
-                      record_type: str = None,
-                      name: str = None,
-                      record_id: str = None) -> dict:
-        """Delete a specific DNS record
-
-        Usage:
-        Either provide the record name and type (record_type),
-        or the record ID.
-
-        Example 1, Delete by record name and type:
-        >>> x = pyrkbun.dns.delete_record('example.com', 'A', 'www')
-        >>> print(x)
-        {'status': 'SUCCESS'}
-
-        Example 2, Delete by record ID:
-        >>> x = pyrkbun.dns.delete_record('example.com', r_id ='253440859')
-        >>> print(x)
-        {'status': 'SUCCESS'}
-        """
-        if record_type:
-            assert record_type in SUPPORTED_DNS_RECORD_TYPES
-
-        path = f'{cls.__api_path}/delete/{domain}/{record_id}' if record_id \
-            else f'{cls.__api_path}/deleteByNameType/{domain}/{record_type}/{name}'
-        response = api_post(path)
-        return response
-
-    @classmethod
-    def edit_record(cls,
-                    domain: str,
-                    updates: dict,
-                    record_type: str = None,
-                    name: str = None,
-                    record_id: str = None) -> dict:
-        """Edit a specific DNS record
-
-        Usage:
-        Provide domain and a formatted dict containing record content
-
+    def delete_record(self,
+                     domain: str,
+                     record_type: Optional[str] = None,
+                     name: Optional[str] = None,
+                     record_id: Optional[str] = None) -> None:
+        """Delete a DNS record
+        
+        Args:
+            domain: Domain name
+            record_type: Type of DNS record (required if not using record_id)
+            name: Record name/subdomain (required if not using record_id)
+            record_id: Specific record ID (alternative to record_type + name)
+            
         Example:
-        >>> record = {'name': 'www',
-                      'type': 'A',
-                      'content': '198.51.100.45',
-                      'ttl': '620',
-                      'prio': '0',
-                      'notes': 'Company website'}
-        >>> x = pyrkbun.dns.edit_record('example.com', record)
-        >>> print(x)
-        {'status': 'SUCCESS'}
+            >>> dns = Dns(client)
+            >>> dns.delete_record('example.com', record_type='A', name='www')
+            >>> # OR
+            >>> dns.delete_record('example.com', record_id='12345')
         """
-        if record_type:
-            assert record_type in SUPPORTED_DNS_RECORD_TYPES
+        if record_type and record_type not in SUPPORTED_DNS_RECORD_TYPES:
+            raise ValueError(f"Unsupported DNS record type: {record_type}")
 
-        path = f'{cls.__api_path}/edit/{domain}/{record_id}' if record_id \
-            else f'{cls.__api_path}/editByNameType/{domain}/{record_type}/{name}'
-        response = api_post(path, updates)
-        return response
+        if not record_id and (not record_type or not name):
+            raise ValueError("Must provide either record_id OR both record_type and name")
 
-    def refresh(self) -> dict:
-        """Refresh DNS class instance details from API
+        if record_id:
+            path = f'{self._api_path}/delete/{domain}/{record_id}'
+        else:
+            path = f'{self._api_path}/deleteByNameType/{domain}/{record_type}/{name}'
+            
+        response = self.client.api_post(path)
+        
+        # Check for successful response
+        if response.get('status') != 'SUCCESS':
+            status = response.get('status', 'UNKNOWN')
+            message = response.get('message', '')
+            error_msg = f"API request failed with status '{status}'"
+            if message:
+                error_msg += f": {message}"
+            raise RuntimeError(error_msg)
 
-        Usage:
-        Execute method on class instance to ensure record is in sync
-        with origin server
-
+    def edit_record(self,
+                   domain: str,
+                   record_id: Optional[str] = None,
+                   record_type: Optional[str] = None,
+                   name: Optional[str] = None,
+                   content: Optional[str] = None,
+                   ttl: Optional[str] = None,
+                   prio: Optional[str] = None,
+                   notes: Optional[str] = None) -> DnsRecord:
+        """Edit an existing DNS record
+        
+        Args:
+            domain: Domain name
+            record_id: Specific record ID (alternative to record_type + name)
+            record_type: Type of DNS record (required if not using record_id)
+            name: Record name/subdomain (required if not using record_id)
+            content: New record content (optional)
+            ttl: New time to live in seconds (optional)
+            prio: New priority (optional)
+            notes: New notes (optional)
+            
+        Returns:
+            DnsRecord object representing the updated record
+            
         Example:
-        >>> x=pyrkbun.dns.get_records('example.com', 'A', 'www')[0]
-        >>> print(x)
-        Dns(domain='example.com', record_type='A', content='198.51.100.45',
-        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
-        ...
-        Record name change to 'web' out of band (i.e. management console)
-        ...
-        >>> x.refresh()
-        >>> print(x)
-        Dns(domain='example.com', record_type='A', content='198.51.100.45',
-        name='web', ttl='620', prio='0', notes='Company website', record_id='253916852')
+            >>> dns = Dns(client)
+            >>> record = dns.edit_record('example.com', record_type='A', name='www', content='1.2.3.5')
+            >>> # OR
+            >>> record = dns.edit_record('example.com', record_id='12345', content='1.2.3.5')
         """
-        path = f'{self.__api_path}/retrieve/{self.domain}/{self.record_id}'
-        response = api_post(path)
-        record: dict = response['records'][0]
-        if 'notes' not in record.keys():
-            record['notes'] = ''
-        self.name = record['name']
-        self.record_type = record['type']
-        self.content = record['content']
-        self.ttl = record['ttl']
-        self.prio = record['prio']
-        self.notes = record['notes']
-        self.record_id = record['id']
-        return response
+        if record_type and record_type not in SUPPORTED_DNS_RECORD_TYPES:
+            raise ValueError(f"Unsupported DNS record type: {record_type}")
 
-    def create(self) -> dict:
-        """Create record based on class instance attributes
+        if not record_id and (not record_type or not name):
+            raise ValueError("Must provide either record_id OR both record_type and name")
 
-        Usage:
-        Execute method on class instance to create a new record and
-        populate record ID
+        # Build payload with only provided values
+        payload = {}
+        if name is not None:
+            payload['name'] = name
+        if record_type is not None:
+            payload['type'] = record_type
+        if content is not None:
+            payload['content'] = content
+        if ttl is not None:
+            payload['ttl'] = ttl
+        if prio is not None:
+            payload['prio'] = prio
+        if notes is not None:
+            payload['notes'] = notes
 
-        Example:
-        >>> x = pyrkbun.dns('example.com',
-                            'A',
-                            '198.51.100.45',
-                            'www',
-                            '620',
-                            '0',
-                            'Company website')
-        >>> print(x)
-        Dns(domain='example.com', record_type='A', content='198.51.100.45',
-        name='www', ttl='620', prio='0', notes='Company website', record_id='')
-        >>> result = x.create()
-        >>> print(result)
-        {'status': 'SUCCESS', 'id': 253916852}
-        >>> print(x)
-        Dns(domain='example.com', record_type='A', content='198.51.100.45',
-        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
-        """
-        path = f'{self.__api_path}/create/{self.domain}'
-        payload = {'name': self.name,
-                   'type': self.record_type,
-                   'content': self.content,
-                   'ttl': self.ttl,
-                   'prio': self.prio,
-                   'notes': self.notes}
-        response = api_post(path, payload)
-        self.record_id = response['id']
-        return response
+        if not payload:
+            raise ValueError("Must provide at least one field to update")
 
-    def update(self) -> dict:
-        """Update record based on class instance attributes
-
-        Usage:
-        Execute method on class instance following updates to instance
-        attributes to push updates to origin server.
-        Record ID MUST be populated.
-
-        Example:
-        >>> x=pyrkbun.dns.get_records('example.com', 'A', 'www')[0]
-        >>> print(x)
-        Dns(domain='example.com', record_type='A', content='198.51.100.45',
-        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
-        >>> x.name = 'web'
-        >>> x.ttl = '990'
-        >>> result = x.update()
-        >>> print(result)
-        {'status': 'SUCCESS'}
-        >>> print(x)
-        Dns(domain='example.com', record_type='A', content='198.51.100.45',
-        name='web', ttl='990', prio='0', notes='Company website', record_id='253916852')
-
-        Note: Attempting an update without any valid changes to the DNS
-        record will result in an API Error.
-        """
-        path = f'{self.__api_path}/edit/{self.domain}/{self.record_id}'
-        payload = {'name': self.name,
-                   'type': self.record_type,
-                   'content': self.content,
-                   'ttl': self.ttl,
-                   'prio': self.prio,
-                   'notes': self.notes}
-        response = api_post(path, payload)
-        return response
-
-    def delete(self) -> dict:
-        """Delete DNS record represented by class instance
-
-        Usage:
-        Execute method on class intance to delete record on origin server.
-        Record ID MUST be populated.
-
-        Example:
-        >>> x=pyrkbun.dns.get_records('example.com', 'A', 'www')[0]
-        >>> print(x)
-        Dns(domain='example.com', record_type='A', content='198.51.100.45',
-        name='www', ttl='620', prio='0', notes='Company website', record_id='253916852')
-        >>> result = x.delete()
-        >>> print(result)
-        {'status': 'SUCCESS'}
-        """
-        path = f'{self.__api_path}/delete/{self.domain}/{self.record_id}'
-        response = api_post(path)
-        return response
+        if record_id:
+            path = f'{self._api_path}/edit/{domain}/{record_id}'
+        else:
+            path = f'{self._api_path}/editByNameType/{domain}/{record_type}/{name}'
+            
+        response = self.client.api_post(path, payload)
+        
+        # Check for successful response
+        if response.get('status') != 'SUCCESS':
+            status = response.get('status', 'UNKNOWN')
+            message = response.get('message', '')
+            error_msg = f"API request failed with status '{status}'"
+            if message:
+                error_msg += f": {message}"
+            raise RuntimeError(error_msg)
+        
+        # Get the updated record to return accurate data
+        if record_id:
+            updated_records = self.get_records(domain, record_id=record_id)
+        else:
+            updated_records = self.get_records(domain, record_type=record_type, name=name)
+            
+        if updated_records.records:
+            return updated_records.records[0]
+        else:
+            raise RuntimeError("Failed to retrieve updated record")

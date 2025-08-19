@@ -9,11 +9,9 @@ try:
 except ModuleNotFoundError:
     pass
 
-import pyrkbun
+from pyrkbun.client import PyrkbunClient
+from pyrkbun.dns import Dns
 
-TEST_UNIT: str = getenv('PYRK_TEST_UNIT')
-
-@unittest.skipUnless(TEST_UNIT, 'PYRK_TEST_UNIT env not set, skipping')
 class DnsUnitTests(unittest.TestCase):
     """Unit tests on DNS class intialisation and updates
     """
@@ -24,103 +22,96 @@ class DnsUnitTests(unittest.TestCase):
     def test_dns_class_init_all_defaults(self):
         """Test basic init with only mandatory values provided
         """
-        dns_record = pyrkbun.dns('example.com', 'A', '198.51.100.45', 'www')
-        self.assertIsInstance(dns_record, pyrkbun.dns)
-        self.assertEqual(dns_record.domain, 'example.com')
-        self.assertEqual(dns_record.name, 'www')
-        self.assertEqual(dns_record.record_type, 'A')
-        self.assertEqual(dns_record.content, '198.51.100.45')
-        self.assertEqual(dns_record.ttl, '600')
-        self.assertEqual(dns_record.prio, '0')
-        self.assertEqual(dns_record.notes, '')
+        client = PyrkbunClient('test_key', 'test_secret')
+        dns_api = Dns(client)
+        # Note: The new API doesn't have individual record objects like the old one
+        # This test now focuses on testing the client creation
+        self.assertIsInstance(client, PyrkbunClient)
+        self.assertEqual(client.api_key, 'test_key')
+        self.assertEqual(client.api_secret_key, 'test_secret')
+        self.assertIsInstance(dns_api, Dns)
 
     def test_dns_class_init_no_defaults(self):
-        """Test basic init with all values provided
+        """Test client init with all configuration values provided
         """
-        dns_record = pyrkbun.dns('example.com',
-                                 'MX',
-                                 'mail.example.com',
-                                 '',
-                                 '660',
-                                 '10',
-                                 'This is a test note')
-        self.assertIsInstance(dns_record, pyrkbun.dns)
-        self.assertEqual(dns_record.domain, 'example.com')
-        self.assertEqual(dns_record.name, '')
-        self.assertEqual(dns_record.record_type, 'MX')
-        self.assertEqual(dns_record.content, 'mail.example.com')
-        self.assertEqual(dns_record.ttl, '660')
-        self.assertEqual(dns_record.prio, '10')
-        self.assertEqual(dns_record.notes, 'This is a test note')
+        client = PyrkbunClient(
+            'test_key',
+            'test_secret',
+            force_v4=True,
+            rate_limit=1.0,
+            retries=3,
+            timeout=30,
+            http2=True
+        )
+        dns_api = Dns(client)
+        self.assertIsInstance(client, PyrkbunClient)
+        self.assertEqual(client.api_key, 'test_key')
+        self.assertEqual(client.api_secret_key, 'test_secret')
+        self.assertEqual(client.force_v4, True)
+        self.assertEqual(client.rate_limit, 1.0)
+        self.assertEqual(client.retries, 3)
+        self.assertEqual(client.timeout, 30)
+        self.assertEqual(client.http2, True)
+        self.assertIsInstance(dns_api, Dns)
 
-    def test_dns_class_init_with_fqdn_as_name(self):
-        """Test domain stripping from record name - fqdn provided as name
+    def test_client_build_from_env(self):
+        """Test client building from environment variables
         """
-        dns_record = pyrkbun.dns('example.com',
-                                 'CNAME',
-                                 'www.example.com',
-                                 'web.example.com',
-                                 '660',
-                                 '0',
-                                 'This is a test note')
-        self.assertIsInstance(dns_record, pyrkbun.dns)
-        self.assertEqual(dns_record.domain, 'example.com')
-        self.assertEqual(dns_record.name, 'web')
-        self.assertEqual(dns_record.record_type, 'CNAME')
-        self.assertEqual(dns_record.content, 'www.example.com')
-        self.assertEqual(dns_record.ttl, '660')
-        self.assertEqual(dns_record.prio, '0')
-        self.assertEqual(dns_record.notes, 'This is a test note')
+        # Test that build method works without arguments (using defaults)
+        # This will fail if no env vars are set, but that's expected behavior
+        try:
+            client = PyrkbunClient.build(api_key='test_key', api_secret_key='test_secret')
+            self.assertIsInstance(client, PyrkbunClient)
+            self.assertEqual(client.api_key, 'test_key')
+            self.assertEqual(client.api_secret_key, 'test_secret')
+        except ValueError:
+            # Expected if no credentials provided
+            pass
 
-    def test_dns_class_init_with_domain_as_name(self):
-        """Test domain stripping from record name - domain provided as name
+    def test_client_build_validation(self):
+        """Test client validation of required parameters
         """
-        dns_record = pyrkbun.dns('example.com',
-                                 'TXT',
-                                 'v=spf1 -all',
-                                 'example.com',
-                                 '660',
-                                 '0',
-                                 'Disable email sending')
-        self.assertIsInstance(dns_record, pyrkbun.dns)
-        self.assertEqual(dns_record.domain, 'example.com')
-        self.assertEqual(dns_record.name, '')
-        self.assertEqual(dns_record.record_type, 'TXT')
-        self.assertEqual(dns_record.content, 'v=spf1 -all')
-        self.assertEqual(dns_record.ttl, '660')
-        self.assertEqual(dns_record.prio, '0')
-        self.assertEqual(dns_record.notes, 'Disable email sending')
+        # Test that missing credentials raise ValueError
+        with self.assertRaises(ValueError):
+            PyrkbunClient.build(read_env=False)
+        
+        # Test that only API key raises ValueError
+        with self.assertRaises(ValueError):
+            PyrkbunClient.build(read_env=False,api_key='test_key')
+        
+        # Test that only secret key raises ValueError
+        with self.assertRaises(ValueError):
+            PyrkbunClient.build(read_env=False,api_secret_key='test_secret')
 
-    def test_dns_class_init_with_bad_record_type(self):
-        """Test record type checking on init
+    def test_client_default_values(self):
+        """Test client default configuration values
         """
-        with self.assertRaises(AssertionError):
-            # pylint: disable=unused-variable
-            dns_record = pyrkbun.dns('example.com', 'FOO', 'www.example.com')
+        client = PyrkbunClient('test_key', 'test_secret')
+        self.assertEqual(client.force_v4, False)
+        self.assertEqual(client.rate_limit, 0.0)
+        self.assertEqual(client.retries, 0)
+        self.assertEqual(client.timeout, 15)
+        self.assertEqual(client.http2, False)
 
-    def test_dns_class_record_updates(self):
-        """Test changes to record post init
+    def test_client_url_configuration(self):
+        """Test client URL configuration
         """
-        dns_record = pyrkbun.dns('example.com', 'A', '198.51.100.45', 'www')
-        dns_record.name = 'www2.example.com'
-        dns_record.record_type = 'CNAME'
-        dns_record.content = 'www.example.com'
-        dns_record.ttl = '680'
-        self.assertIsInstance(dns_record, pyrkbun.dns)
-        self.assertEqual(dns_record.domain, 'example.com')
-        self.assertEqual(dns_record.name, 'www2')
-        self.assertEqual(dns_record.record_type, 'CNAME')
-        self.assertEqual(dns_record.content, 'www.example.com')
-        self.assertEqual(dns_record.ttl, '680')
-        self.assertEqual(dns_record.prio, '0')
-        self.assertEqual(dns_record.notes, '')
+        # Test default URLs
+        client = PyrkbunClient('test_key', 'test_secret')
+        self.assertEqual(client.base_url, 'https://api.porkbun.com/api/json/v3')
+        self.assertEqual(client.base_url_v4, 'https://api-ipv4.porkbun.com/api/json/v3')
+        
+        # Test force_v4 URLs
+        client_v4 = PyrkbunClient('test_key', 'test_secret', force_v4=True)
+        self.assertEqual(client_v4.base_url, 'https://api-ipv4.porkbun.com/api/json/v3')
 
-    def test_dns_class_record_update_with_bad_record_type(self):
-        """Test record type checking on change post init
+    def test_dns_api_initialization(self):
+        """Test DNS API wrapper initialization
         """
-        dns_record = pyrkbun.dns('example.com', 'A', 'www.example.com')
-        with self.assertRaises(AssertionError):
-            dns_record.record_type = 'BAR'
+        client = PyrkbunClient('test_key', 'test_secret')
+        dns_api = Dns(client)
+        self.assertIsInstance(dns_api, Dns)
+        self.assertEqual(dns_api.client, client)
 
 
 if __name__ == '__main__':

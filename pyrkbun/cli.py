@@ -3,14 +3,14 @@
 #! /usr/local/bin/python
 import json
 import argparse
+from dataclasses import asdict
 from os import getenv
 from colorama import init, Fore, Back, Style
 
-from . import ssl
-from . import pricing
-from .dns import Dns as dns
-from .util import api_ping
-from .const import ApiError, ApiFailure
+from .client import PyrkbunClient, ApiError, ApiFailure
+from .dns import Dns
+from .ssl import Ssl
+from .pricing import Pricing
 
 # init colorama
 init(autoreset=True)
@@ -26,104 +26,118 @@ SUPPORTED_DNS_RECORD_TYPES = {'A',
                               'TLSA',
                               'CAA'}
 
-def check_api_creds() -> bool:
-    """CHeck API Creds have been set"""
-    check_api_key: str = getenv('PYRK_API_KEY')
-    check_api_secret: str = getenv('PYRK_API_SECRET_KEY')
-
-    if not check_api_key:
-        print(f'{Fore.RED}API Key has not been set. Set enironment varaibale' +
-            f'{Fore.RED} "export PYRK_API_KEY=<your_api_key>"')
-        return False
-
-    if not check_api_secret:
-        print(f'{Fore.RED}API Secret Key has not been set. Set enironment varaibale' +
-            f'{Fore.RED} "export PYRK_API_SECRET_KEY=<your_api_secret_key>"')
-        return False
-
-    return True
+def get_client() -> PyrkbunClient:
+    """Get a configured PyrkbunClient"""
+    try:
+        return PyrkbunClient.build()
+    except ValueError as e:
+        if "api_key and api_secret_key are required" in str(e):
+            print(f'{Fore.RED}API credentials not configured.')
+            print(f'{Fore.RED}Set environment variables:')
+            print(f'{Fore.RED}  export PYRK_API_KEY=<your_api_key>')
+            print(f'{Fore.RED}  export PYRK_API_SECRET_KEY=<your_api_secret_key>')
+        raise SystemExit(1) from e
 
 # Create, edit and delete fuctions to be called once user options are evaluated
-def create_records(domain, records: list):
+def create_records(domain, records: list, client: PyrkbunClient):
     """Create records in target domain based on supplied records
     """
+    dns = Dns(client)
     created: dict = {'SUCCESS': [], 'FAILURE': []}
     for record in records:
         record.pop('domain', None)
         record.pop('id', None)
         try:
-            result = dns.create_record(domain, record)
-        except (ApiError, ApiFailure) as error:
-            created['FAILURE'].append({'result': error.message, 'record': record})
+            result = dns.create_record(
+                domain, 
+                record['type'], 
+                record['content'],
+                name=record.get('name'),
+                ttl=record.get('ttl'),
+                prio=record.get('priority'),
+                notes=record.get('notes')
+            )
+        except (ApiError, ApiFailure, RuntimeError) as error:
+            created['FAILURE'].append({'result': str(error), 'record': record})
             print(f'{Back.RED}{Fore.YELLOW}FAILED to CREATE record:{record}')
             continue
-        record.update({'id': str(result['id'])})
+        record.update({'id': result.id})
         print(f'{Fore.GREEN}CREATED record:{record}')
-        created['SUCCESS'].append({'result': result, 'record': record})
+        created['SUCCESS'].append({'result': asdict(result), 'record': record})
     return created
 
-def delete_records(domain, records: list):
+def delete_records(domain, records: list, client: PyrkbunClient):
     """Delete records in target domain based on supplied records
     """
+    dns = Dns(client)
     deleted: dict = {'SUCCESS': [], 'FAILURE': []}
     for record in records:
         try:
-            result = dns.delete_record(domain, record_id=record['id'])
-        except (ApiError, ApiFailure) as error:
-            deleted['FAILURE'].append({'result': error.message, 'record': record})
+            dns.delete_record(domain, record_id=record['id'])
+        except (ApiError, ApiFailure, RuntimeError) as error:
+            deleted['FAILURE'].append({'result': str(error), 'record': record})
             print(f'{Back.RED}{Fore.YELLOW}FAILED to DELETE record:{record}')
             continue
         print(f'{Fore.GREEN}DELETED record:{record}')
-        deleted['SUCCESS'].append({'result': result, 'record': record})
+        deleted['SUCCESS'].append({'result': 'SUCCESS', 'record': record})
     return deleted
 
-def edit_records(domain, records: list):
+def edit_records(domain, records: list, client: PyrkbunClient):
     """Edit records in target domain based on supplied records
     """
+    dns = Dns(client)
     edited: dict = {'SUCCESS': [], 'FAILURE': []}
     for record in records:
         try:
             record.pop('domain', None)
             record_id = record.pop('id', None)
-            result = dns.edit_record(domain, record, record_id=record_id)
+            result = dns.edit_record(
+                domain,
+                record_id=record_id,
+                record_type=record.get('type'),
+                name=record.get('name'),
+                content=record.get('content'),
+                ttl=record.get('ttl'),
+                prio=record.get('priority'),
+                notes=record.get('notes')
+            )
             record.update({'id': record_id})
-        except (ApiError, ApiFailure) as error:
-            edited['FAILURE'].append({'result': error.message, 'record': record})
+        except (ApiError, ApiFailure, RuntimeError) as error:
+            edited['FAILURE'].append({'result': str(error), 'record': record})
             print(f'{Back.RED}{Fore.YELLOW}FAILED to EDIT record:{record}')
             continue
         print(f'{Fore.GREEN}EDITED record:{record}{Style.RESET_ALL}')
-        edited['SUCCESS'].append({'result': result, 'record': record})
+        edited['SUCCESS'].append({'result': asdict(result), 'record': record})
     return edited
 
 def run_ping(args: argparse.Namespace) -> str:
     """Run Ping"""
     try:
-        result: dict = api_ping(args.v4)
-    except ApiError as error:
-        return f'{Back.RED}{Fore.YELLOW}API Error -> {error.message}'
-    except ApiFailure as error:
-        return f'{Back.RED}{Fore.YELLOW}API Failure -> {error.message}'
+        client = get_client()
+        result = client.ping(args.v4)
+    except (ApiError, ApiFailure, RuntimeError) as error:
+        return f'{Back.RED}{Fore.YELLOW}Error -> {error}'
     return json.dumps(result)
 
 def run_pricing(args: argparse.Namespace) -> str: # pylint: disable = unused-argument
-    """Run Picing"""
+    """Run Pricing"""
     try:
-        result: dict = pricing.get()
-    except ApiError as error:
-        return f'{Back.RED}{Fore.YELLOW}API Error -> {error.message}'
-    except ApiFailure as error:
-        return f'{Back.RED}{Fore.YELLOW}API Failure -> {error.message}'
-    return json.dumps(result)
+        client = get_client()
+        pricing = Pricing(client)
+        result = pricing.get()
+        return json.dumps(asdict(result))
+    except (ApiError, ApiFailure, RuntimeError) as error:
+        return f'{Back.RED}{Fore.YELLOW}Error -> {error}'
 
 def run_ssl(args: argparse.Namespace) -> str:
     """Run SSL"""
     try:
-        result: dict = ssl.get(args.domain)
-    except ApiError as error:
-        return f'{Back.RED}{Fore.YELLOW}API Error -> {error.message}'
-    except ApiFailure as error:
-        return f'{Back.RED}{Fore.YELLOW}API Failure -> {error.message}'
-    return json.dumps(result)
+        client = get_client()
+        ssl = Ssl(client)
+        result = ssl.get(args.domain)
+        return json.dumps(asdict(result))
+    except (ApiError, ApiFailure, RuntimeError) as error:
+        return f'{Back.RED}{Fore.YELLOW}Error -> {error}'
 
 def run_dns(args: argparse.Namespace) -> str: # pylint: disable = too-many-branches
     """Run DNS"""
@@ -132,65 +146,93 @@ def run_dns(args: argparse.Namespace) -> str: # pylint: disable = too-many-branc
     except AttributeError:
         return 'Please choose from get, create, edit, delete, or restore'
 
-    domain: str = args.domain
-    record_id: str = args.id
-    record_type: str = args.type
-    name: str = args.name
-    content: str = args.content
-    ttl: str = args.ttl
-    priority: str = args.priority
-    notes: str = args.notes
-
-    #TODO: Optimise edit process so that record is retieved and unassigned values auto filled
-    if command in ('create', 'edit'):
-        record = {'name': name,
-                  'type': record_type,
-                  'content': content,
-                  'ttl': ttl,
-                  'prio': priority,
-                  'notes': notes}
     try:
+        client = get_client()
+        dns = Dns(client)
+        
+        domain: str = args.domain
+        record_id: str = args.id
+        record_type: str = args.type
+        name: str = args.name
+        content: str = args.content
+        ttl: str = args.ttl
+        priority: str = args.priority
+        notes: str = args.notes
+
         if command == 'get':
             if record_id:
-                records = dns.get_records(domain, record_id=record_id)
+                response = dns.get_records(domain, record_id=record_id)
             elif name and record_type:
-                records = dns.get_records(domain, record_type, name)
+                response = dns.get_records(domain, record_type=record_type, name=name)
             elif record_type:
-                records = dns.get_records(domain, record_type)
+                response = dns.get_records(domain, record_type=record_type)
             else:
-                records = dns.get_records(domain)
+                response = dns.get_records(domain)
 
+            # Convert DnsRecord objects to dict format for CLI output
             result = []
-            for record in records:
-                modified_record = record.__dict__
-                modified_record['type'] = modified_record.pop('record_type')
-                modified_record['id'] = modified_record.pop('record_id')
-                modified_record.pop('domain', None)
-                result.append(modified_record)
+            for record in response.records:
+                record_dict = asdict(record)
+                # Rename fields to match CLI expectations
+                record_dict['type'] = record_dict.pop('type')
+                record_dict['id'] = record_dict.pop('id')
+                result.append(record_dict)
+            
+            return json.dumps(result)
 
         elif command == 'create':
-            result = dns.create_record(domain, record)
+            result = dns.create_record(
+                domain, 
+                record_type, 
+                content,
+                name=name if name else None,
+                ttl=ttl if ttl else None,
+                prio=priority if priority else None,
+                notes=notes if notes else None
+            )
+            return json.dumps(asdict(result))
 
         elif command == 'edit':
             if record_id:
-                result = dns.edit_record(domain, record, record_id=record_id)
+                result = dns.edit_record(
+                    domain, 
+                    record_id=record_id,
+                    record_type=record_type if record_type else None,
+                    name=name if name else None,
+                    content=content if content else None,
+                    ttl=ttl if ttl else None,
+                    prio=priority if priority else None,
+                    notes=notes if notes else None
+                )
             elif name and record_type:
-                result = dns.edit_record(domain, record, record_type, name)
+                result = dns.edit_record(
+                    domain,
+                    record_type=record_type,
+                    name=name,
+                    content=content if content else None,
+                    ttl=ttl if ttl else None,
+                    prio=priority if priority else None,
+                    notes=notes if notes else None
+                )
             else:
                 return f'{Fore.RED}Please set value for either "-id" OR "-name" and "-type"'
+            
+            return json.dumps(asdict(result))
 
         elif command == 'delete':
             if record_id:
-                result = dns.delete_record(domain, record_id=record_id)
+                dns.delete_record(domain, record_id=record_id)
             elif name and record_type:
-                result = dns.delete_record(domain, record_type, name)
+                dns.delete_record(domain, record_type=record_type, name=name)
             else:
                 return f'{Fore.RED}Please set value for either "-id" OR "-name" and "-type"'
+            
+            return json.dumps({'status': 'SUCCESS'})
 
-    except (ApiError, ApiFailure) as error:
-        return f'{Back.RED}{Fore.YELLOW}API Error -> {error.message}'
+    except (ApiError, ApiFailure, RuntimeError) as error:
+        return f'{Back.RED}{Fore.YELLOW}Error -> {error}'
 
-    return json.dumps(result)
+    return json.dumps({'status': 'ERROR', 'message': 'Unknown command'})
 
 def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-many-locals, too-many-branches, too-many-statements]
     """Run DNS Bulk
@@ -224,7 +266,8 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
                                       notes='')
 
     print(f'{Fore.BLUE}{Style.DIM}Collecting existing records')
-    existing_records: dict = json.loads(run_dns(run_dns_args))
+    existing_records = json.loads(run_dns(run_dns_args))
+    client = get_client()
 
     # Remove NS records from all operations unless explicitly included
     if not include_ns:
@@ -232,11 +275,11 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
         user_provided_records = [record for record in user_provided_records if record['type'] != 'NS'] #pylint: disable=line-too-long
 
     if mode == 'flush':
-        deleted = delete_records(domain, existing_records)
-        created = create_records(domain, user_provided_records)
+        deleted = delete_records(domain, existing_records, client)
+        created = create_records(domain, user_provided_records, client)
 
     if mode == 'add':
-        created = create_records(domain, user_provided_records)
+        created = create_records(domain, user_provided_records, client)
 
     if mode == 'merge': # pylint: disable = too-many-nested-blocks
         # This is a somewhat complex collection of loop and if's
@@ -279,8 +322,8 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
                 print(f'{Fore.BLUE}{Style.DIM}Adding record to IGNORE list:{user_record}')
                 ignored.append(user_record)
         # create and edit records as required
-        created = create_records(domain, to_create)
-        edited = edit_records(domain, to_edit)
+        created = create_records(domain, to_create, client)
+        edited = edit_records(domain, to_edit, client)
 
     # Format results to be written to file
     result = {'CREATED': created, 'EDITED': edited, 'DELETED': deleted, 'IGNORED': ignored}
@@ -289,7 +332,7 @@ def run_dns_bulk(args: argparse.Namespace) -> None: # pylint: disable = [too-man
         json.dump(result, file)
     print(f'{Fore.GREEN}{Style.BRIGHT}Detailed results written to {output_file}')
 
-def main() -> str: # pylint: disable = too-many-statements
+def main() -> None: # pylint: disable = too-many-statements
     """"Operate pyrkbun from the command line"""
 
     parser = argparse.ArgumentParser(
@@ -407,9 +450,6 @@ For API Secret Key set:
                     + 'Existing records must include the record ID.')
 
     args = parser.parse_args()
-
-    if not check_api_creds():
-        return
 
     result = args.func(args)
     if result:
